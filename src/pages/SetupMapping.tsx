@@ -250,12 +250,7 @@ export function SetupMapping() {
                     {wfAccounts.length > 0 && <SelectSeparator />}
                     {wfAccounts.map((wf) => (
                       <SelectItem key={wf.id} value={wf.id} disabled={claimedByOthers.has(wf.id)}>
-                        <span className="flex items-center gap-3">
-                          <span>{wf.name}</span>
-                          <span className="font-mono text-xs text-muted-foreground">
-                            <PrivacyAmount value={Number(wf.balance) || 0} currency={wf.currency} />
-                          </span>
-                        </span>
+                        {wf.name} ({wf.currency})
                       </SelectItem>
                     ))}
                   </SelectContent>
