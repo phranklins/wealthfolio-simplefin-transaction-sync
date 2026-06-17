@@ -8,8 +8,8 @@ export const LOW_CONFIDENCE = 40;
 export const SIMPLEFIN_CREATE_URL = "https://bridge.simplefin.org/simplefin/create";
 
 // SetupMapping sentinels
-export const CREATE_CASH_SENTINEL = "__create_cash__";
-export const CREATE_SECURITIES_SENTINEL = "__create_securities__";
+export const SKIP_SENTINEL = "__skip__";
+export const CREATE_NEW_SENTINEL = "__create_new__";
 
 // SyncPage
 export const PAGE_SIZE = 50;
