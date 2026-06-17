@@ -153,12 +153,12 @@ export function SetupMapping() {
       if (bestScore >= 0.4 && bestWfId) {
         guessed[sf.id] = bestWfId;
         claimed.add(bestWfId);
+      } else {
+        guessed[sf.id] = SKIP_SENTINEL;
       }
     }
 
-    if (Object.keys(guessed).length > 0) {
-      setSelections((prev) => ({ ...prev, ...guessed }));
-    }
+    setSelections((prev) => ({ ...prev, ...guessed }));
   }
 
   async function handleSave() {
@@ -218,8 +218,9 @@ export function SetupMapping() {
     }
   }
 
-  const hasMappings = Object.entries(selections).some(
-    ([, v]) => v && v !== SKIP_SENTINEL,
+  const allAccountsSelected = sfAccounts.every((sf) => !!selections[sf.id]);
+  const hasMappings = allAccountsSelected && Object.values(selections).some(
+    (v) => v && v !== SKIP_SENTINEL,
   );
 
   return (
