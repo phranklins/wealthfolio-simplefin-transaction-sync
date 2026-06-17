@@ -222,7 +222,7 @@ export function SetupMapping() {
                     </CardDescription>
                   </div>
                   <Badge variant="outline" className="font-mono text-xs">
-                    <PrivacyAmount value={parseFloat(sf.balance)} currency={sf.currency} />
+                    <PrivacyAmount value={parseFloat(sf.balance) || 0} currency={sf.currency} />
                   </Badge>
                 </div>
               </CardHeader>
@@ -253,7 +253,7 @@ export function SetupMapping() {
                         <span className="flex items-center gap-3">
                           <span>{wf.name}</span>
                           <span className="font-mono text-xs text-muted-foreground">
-                            <PrivacyAmount value={wf.balance} currency={wf.currency} />
+                            <PrivacyAmount value={Number(wf.balance) || 0} currency={wf.currency} />
                           </span>
                         </span>
                       </SelectItem>
