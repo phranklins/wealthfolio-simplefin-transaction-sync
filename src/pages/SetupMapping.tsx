@@ -25,6 +25,7 @@ import {
   fetchAccounts,
   saveConfig,
   getErrorMessage,
+  stringSimilarity,
   SKIP_SENTINEL,
   CREATE_NEW_SENTINEL,
 } from "../lib";
@@ -115,6 +116,50 @@ export function SetupMapping() {
     return sf.currency !== wf.currency;
   }
 
+  function handleGuess() {
+    const guessed: Record<string, string> = {};
+    const claimed = new Set(
+      Object.values(selections).filter((v) => v && v !== SKIP_SENTINEL && v !== CREATE_NEW_SENTINEL),
+    );
+
+    for (const sf of sfAccounts) {
+      if (selections[sf.id]) continue; // don't overwrite existing choices
+      const sfBalance = parseFloat(sf.balance) || 0;
+      let bestScore = 0;
+      let bestWfId: string | null = null;
+
+      for (const wf of wfAccounts) {
+        if (wf.currency !== sf.currency) continue;
+        if (claimed.has(wf.id)) continue;
+
+        const nameSim = stringSimilarity(sf.name, wf.name);
+
+        const wfBal = wfBalances.get(wf.id);
+        let balScore = 0;
+        if (wfBal !== undefined) {
+          const maxAbs = Math.max(Math.abs(sfBalance), Math.abs(wfBal), 1);
+          const pct = Math.abs(sfBalance - wfBal) / maxAbs;
+          balScore = pct < 0.02 ? 1 : pct < 0.1 ? 0.5 : pct < 0.25 ? 0.2 : 0;
+        }
+
+        const score = wfBal !== undefined ? nameSim * 0.6 + balScore * 0.4 : nameSim;
+        if (score > bestScore) {
+          bestScore = score;
+          bestWfId = wf.id;
+        }
+      }
+
+      if (bestScore >= 0.4 && bestWfId) {
+        guessed[sf.id] = bestWfId;
+        claimed.add(bestWfId);
+      }
+    }
+
+    if (Object.keys(guessed).length > 0) {
+      setSelections((prev) => ({ ...prev, ...guessed }));
+    }
+  }
+
   async function handleSave() {
     setIsSaving(true);
     setError(null);
@@ -182,6 +227,14 @@ export function SetupMapping() {
         icon={<Icons.ArrowLeftRight className="h-5 w-5 text-primary" />}
         title="Map Accounts"
         onBack={reconfiguring ? () => setReconfiguring(false) : undefined}
+        actions={
+          wfAccounts.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleGuess}>
+              <Icons.Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              Guess
+            </Button>
+          )
+        }
       />
       <p className="text-sm text-muted-foreground mb-6 -mt-4">
         Connect each SimpleFin account to a Wealthfolio account, or create a new one.

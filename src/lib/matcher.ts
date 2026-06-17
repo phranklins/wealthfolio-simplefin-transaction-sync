@@ -12,7 +12,7 @@ function normalize(s: string): string {
 }
 
 // Rough Dice coefficient for fuzzy string similarity (0–1)
-function stringSimilarity(a: string, b: string): number {
+export function stringSimilarity(a: string, b: string): number {
   if (!a || !b) return 0;
   const na = normalize(a);
   const nb = normalize(b);
