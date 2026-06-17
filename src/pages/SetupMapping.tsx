@@ -9,36 +9,38 @@ import {
   Alert,
   AlertDescription,
   Badge,
+  Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
   Icons,
+  PrivacyAmount,
 } from "@wealthfolio/ui";
 import type { Account } from "@wealthfolio/addon-sdk";
-import { PrivacyAmount } from "@wealthfolio/ui";
 import {
   fetchAccounts,
   saveConfig,
-  deleteCredentials,
-  deleteConfig,
-  clearResponseCache,
   getErrorMessage,
-  CREATE_CASH_SENTINEL,
-  CREATE_SECURITIES_SENTINEL,
+  SKIP_SENTINEL,
+  CREATE_NEW_SENTINEL,
 } from "../lib";
 import { useBankSyncAddon } from "../contexts/BankSyncAddonProvider";
 import { SfErrorsAlert, PageHeader } from "../components";
 import type { SimpleFinAccount, AccountMapping } from "../types";
 import { DEFAULT_CONFIG } from "../types";
 
+type NewAccountForm = { name: string; accountType: "CASH" | "SECURITIES"; currency: string };
+
 export function SetupMapping() {
-  const { ctx, accessUrl, config, refresh } = useBankSyncAddon();
+  const { ctx, accessUrl, config, refresh, reconfiguring, setReconfiguring } = useBankSyncAddon();
   const [sfAccounts, setSfAccounts] = useState<SimpleFinAccount[]>([]);
   const [wfAccounts, setWfAccounts] = useState<Account[]>([]);
-  const [mappings, setMappings] = useState<Record<string, string>>({});
-  const [creating, setCreating] = useState<Set<string>>(new Set());
+  const [selections, setSelections] = useState<Record<string, string>>({});
+  const [newAccountForms, setNewAccountForms] = useState<Record<string, NewAccountForm>>({});
   const [sfErrors, setSfErrors] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -62,7 +64,7 @@ export function SetupMapping() {
           for (const m of config.mappings) {
             existing[m.simpleFinAccountId] = m.wealthfolioAccountId;
           }
-          setMappings(existing);
+          setSelections(existing);
         }
       } catch (err) {
         setError(getErrorMessage(err, "Failed to load accounts."));
@@ -73,32 +75,19 @@ export function SetupMapping() {
     load();
   }, [accessUrl, ctx, config]);
 
-  async function handleSelectChange(sfId: string, value: string) {
-    if (value !== CREATE_CASH_SENTINEL && value !== CREATE_SECURITIES_SENTINEL) {
-      setMappings((prev) => ({ ...prev, [sfId]: value }));
-      return;
-    }
-
-    const isSecurities = value === CREATE_SECURITIES_SENTINEL;
-    const sf = sfAccounts.find((a) => a.id === sfId)!;
-    setCreating((prev) => new Set(prev).add(sfId));
-    try {
-      const newAccount = await ctx.api.accounts.create({
-        name: sf.name,
-        accountType: isSecurities ? "SECURITIES" : "CASH",
-        trackingMode: "TRANSACTIONS",
-        currency: sf.currency,
-        isDefault: false,
-        isActive: true,
-      });
-      setWfAccounts((prev) => [...prev, newAccount]);
-      setMappings((prev) => ({ ...prev, [sfId]: newAccount.id }));
-    } catch (err) {
-      setError(getErrorMessage(err, "Failed to create account."));
-    } finally {
-      setCreating((prev) => {
-        const next = new Set(prev);
-        next.delete(sfId);
+  function handleSelectChange(sfId: string, value: string) {
+    if (value === CREATE_NEW_SENTINEL) {
+      const sf = sfAccounts.find((a) => a.id === sfId)!;
+      setSelections((prev) => ({ ...prev, [sfId]: CREATE_NEW_SENTINEL }));
+      setNewAccountForms((prev) => ({
+        ...prev,
+        [sfId]: { name: sf.name, accountType: "CASH", currency: sf.currency },
+      }));
+    } else {
+      setSelections((prev) => ({ ...prev, [sfId]: value }));
+      setNewAccountForms((prev) => {
+        const next = { ...prev };
+        delete next[sfId];
         return next;
       });
     }
@@ -113,21 +102,48 @@ export function SetupMapping() {
 
   async function handleSave() {
     setIsSaving(true);
+    setError(null);
     try {
-      const newMappings: AccountMapping[] = Object.entries(mappings)
-        .filter(([, wfId]) => wfId)
-        .map(([sfId, wfId]) => {
-          const sf = sfAccounts.find((a) => a.id === sfId)!;
-          const wf = wfAccounts.find((a) => a.id === wfId)!;
-          return {
+      const resolvedWfAccounts = [...wfAccounts];
+      const newMappings: AccountMapping[] = [];
+
+      for (const [sfId, selection] of Object.entries(selections)) {
+        if (!selection || selection === SKIP_SENTINEL) continue;
+
+        const sf = sfAccounts.find((a) => a.id === sfId)!;
+
+        if (selection === CREATE_NEW_SENTINEL) {
+          const form = newAccountForms[sfId];
+          if (!form) continue;
+          const newAccount = await ctx.api.accounts.create({
+            name: form.name,
+            accountType: form.accountType,
+            trackingMode: "TRANSACTIONS",
+            currency: form.currency,
+            isDefault: false,
+            isActive: true,
+          });
+          resolvedWfAccounts.push(newAccount);
+          newMappings.push({
+            simpleFinAccountId: sf.id,
+            simpleFinAccountName: sf.name,
+            simpleFinCurrency: sf.currency,
+            wealthfolioAccountId: newAccount.id,
+            wealthfolioAccountName: newAccount.name,
+            wealthfolioCurrency: newAccount.currency,
+          });
+        } else {
+          const wf = resolvedWfAccounts.find((a) => a.id === selection)!;
+          newMappings.push({
             simpleFinAccountId: sf.id,
             simpleFinAccountName: sf.name,
             simpleFinCurrency: sf.currency,
             wealthfolioAccountId: wf.id,
             wealthfolioAccountName: wf.name,
             wealthfolioCurrency: wf.currency,
-          };
-        });
+          });
+        }
+      }
 
       await saveConfig(ctx.api.secrets, {
         ...(config ?? DEFAULT_CONFIG),
@@ -141,38 +157,34 @@ export function SetupMapping() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="p-6 max-w-lg mx-auto">
-        <p className="text-muted-foreground">Loading accounts...</p>
-      </div>
-    );
-  }
-
-  const hasMappings = Object.values(mappings).some(Boolean);
+  const hasMappings = Object.entries(selections).some(
+    ([, v]) => v && v !== SKIP_SENTINEL,
+  );
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <PageHeader
         icon={<Icons.ArrowLeftRight className="h-5 w-5 text-primary" />}
         title="Map Accounts"
-        onBack={async () => {
-          await deleteCredentials(ctx.api.secrets);
-          await deleteConfig(ctx.api.secrets);
-          clearResponseCache();
-          refresh(true);
-        }}
+        onBack={reconfiguring ? () => setReconfiguring(false) : undefined}
       />
       <p className="text-sm text-muted-foreground mb-6 -mt-4">
-        Connect each SimpleFin account to a Wealthfolio account, or create a new one automatically.
+        Connect each SimpleFin account to a Wealthfolio account, or create a new one.
       </p>
 
-      <SfErrorsAlert errors={sfErrors} />
+      {isLoading && (
+        <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
+          <Icons.Spinner className="h-4 w-4 animate-spin" />
+          <span>Loading accounts...</span>
+        </div>
+      )}
 
-      {error && (
+      {!isLoading && <SfErrorsAlert errors={sfErrors} />}
+
+      {!isLoading && error && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>
-            <p className="font-medium">Could not load SimpleFin accounts</p>
+            <p className="font-medium">Error</p>
             <p className="text-sm mt-1">{error}</p>
             {error.includes("402") && (
               <p className="text-sm mt-2 opacity-80">
@@ -184,14 +196,18 @@ export function SetupMapping() {
         </Alert>
       )}
 
-      <div className="space-y-3 mb-6">
+      {!isLoading && <div className="space-y-3 mb-6">
         {sfAccounts.map((sf) => {
-          const selectedWfId = mappings[sf.id];
-          const mismatch = selectedWfId ? currencyMismatch(sf.id, selectedWfId) : false;
-          const isCreating = creating.has(sf.id);
+          const selection = selections[sf.id] ?? "";
+          const form = newAccountForms[sf.id];
+          const isCreating = selection === CREATE_NEW_SENTINEL;
+          const mismatch =
+            selection && selection !== SKIP_SENTINEL && selection !== CREATE_NEW_SENTINEL
+              ? currencyMismatch(sf.id, selection)
+              : false;
           const claimedByOthers = new Set(
-            Object.entries(mappings)
-              .filter(([sfId, wfId]) => sfId !== sf.id && !!wfId)
+            Object.entries(selections)
+              .filter(([sfId, v]) => sfId !== sf.id && !!v && v !== SKIP_SENTINEL && v !== CREATE_NEW_SENTINEL)
               .map(([, wfId]) => wfId),
           );
 
@@ -210,55 +226,89 @@ export function SetupMapping() {
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="pt-0 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Wealthfolio Account</p>
+              <CardContent className="pt-0 space-y-3">
                 <Select
-                  value={selectedWfId ?? ""}
+                  value={selection}
                   onValueChange={(val) => handleSelectChange(sf.id, val)}
-                  disabled={isCreating}
                 >
                   <SelectTrigger>
-                    {isCreating ? (
-                      <span className="text-muted-foreground">Creating account...</span>
-                    ) : (
-                      <SelectValue placeholder="Skip this account" />
-                    )}
+                    <SelectValue placeholder="Select or skip..." />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={SKIP_SENTINEL}>
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <Icons.XCircle className="h-3.5 w-3.5" />
+                        Skip this account
+                      </span>
+                    </SelectItem>
+                    <SelectItem value={CREATE_NEW_SENTINEL}>
+                      <span className="flex items-center gap-1.5 text-primary">
+                        <Icons.PlusCircle className="h-3.5 w-3.5" />
+                        Create new account…
+                      </span>
+                    </SelectItem>
+                    {wfAccounts.length > 0 && <SelectSeparator />}
                     {wfAccounts.map((wf) => (
                       <SelectItem key={wf.id} value={wf.id} disabled={claimedByOthers.has(wf.id)}>
-                        {wf.name} ({wf.currency})
+                        <span className="flex items-center gap-3">
+                          <span>{wf.name}</span>
+                          <span className="font-mono text-xs text-muted-foreground">
+                            <PrivacyAmount value={wf.balance} currency={wf.currency} />
+                          </span>
+                        </span>
                       </SelectItem>
                     ))}
-                    <SelectItem value={CREATE_CASH_SENTINEL}>
-                      <span className="flex items-center gap-1.5 text-primary">
-                        <Icons.PlusCircle className="h-3.5 w-3.5" />
-                        <span>
-                          <span className="block">Create "{sf.name}" as Spending Account</span>
-                          <span className="block text-xs text-muted-foreground font-normal">
-                            Checking, savings, credit cards
-                          </span>
-                        </span>
-                      </span>
-                    </SelectItem>
-                    <SelectItem value={CREATE_SECURITIES_SENTINEL}>
-                      <span className="flex items-center gap-1.5 text-primary">
-                        <Icons.PlusCircle className="h-3.5 w-3.5" />
-                        <span>
-                          <span className="block">Create "{sf.name}" as Investment Account</span>
-                          <span className="block text-xs text-muted-foreground font-normal">
-                            Brokerage, 401k, IRA
-                          </span>
-                        </span>
-                      </span>
-                    </SelectItem>
                   </SelectContent>
                 </Select>
+
+                {isCreating && form && (
+                  <div className="space-y-3 pt-3 border-t">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Account name</Label>
+                      <Input
+                        value={form.name}
+                        onChange={(e) =>
+                          setNewAccountForms((prev) => ({
+                            ...prev,
+                            [sf.id]: { ...form, name: e.target.value },
+                          }))
+                        }
+                        placeholder="Account name"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Account type</Label>
+                      <Select
+                        value={form.accountType}
+                        onValueChange={(val) =>
+                          setNewAccountForms((prev) => ({
+                            ...prev,
+                            [sf.id]: { ...form, accountType: val as "CASH" | "SECURITIES" },
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CASH">Spending account</SelectItem>
+                          <SelectItem value="SECURITIES">Investment account</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>Currency:</span>
+                      <Badge variant="outline" className="font-mono">{sf.currency}</Badge>
+                      <span>(inherited from SimpleFin)</span>
+                    </div>
+                  </div>
+                )}
 
                 {mismatch && (
                   <p className="text-xs text-yellow-600 dark:text-yellow-400">
                     Currency mismatch: SimpleFin reports {sf.currency} but this Wealthfolio account
-                    uses {wfAccounts.find((a) => a.id === selectedWfId)?.currency}. Wealthfolio will
+                    uses {wfAccounts.find((a) => a.id === selection)?.currency}. Wealthfolio will
                     convert using its exchange rates.
                   </p>
                 )}
@@ -266,11 +316,11 @@ export function SetupMapping() {
             </Card>
           );
         })}
-      </div>
+      </div>}
 
-      <Button onClick={handleSave} disabled={!hasMappings || isSaving} className="w-full">
+      {!isLoading && <Button onClick={handleSave} disabled={!hasMappings || isSaving} className="w-full">
         {isSaving ? "Saving..." : "Save"}
-      </Button>
+      </Button>}
     </div>
   );
 }
