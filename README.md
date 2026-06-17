@@ -28,10 +28,13 @@ The addon requests the minimum set of permissions needed to function:
 
 | Permission | Purpose |
 |---|---|
-| `accounts.getAccounts` | Match SimpleFin accounts to Wealthfolio accounts |
-| `activities.getActivities` | Load existing transactions for duplicate detection |
-| `activities.createActivity` | Import confirmed new transactions |
-| `secrets.get/set/delete` | Persist the SimpleFin Access URL between sessions |
+| `accounts.getAll` | Read existing accounts to match against SimpleFin accounts |
+| `accounts.create` | Create new Wealthfolio accounts during account mapping setup |
+| `activities.getAll` | Load existing transactions for duplicate detection |
+| `activities.saveMany` / `activities.import` | Import confirmed new transactions from SimpleFin |
+| `activities.checkImport` | Validate transactions before import |
+| `portfolio.getHoldings` | Read account balances to help identify accounts during setup |
+| `secrets.get/set/delete` | Persist the SimpleFin Access URL in Wealthfolio's encrypted keyring |
 | `sidebar.addItem` | Navigation entry point |
 
 ## A note on how this was built
