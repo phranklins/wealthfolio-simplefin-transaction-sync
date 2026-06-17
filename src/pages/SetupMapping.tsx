@@ -23,6 +23,7 @@ import {
 import type { Account } from "@wealthfolio/addon-sdk";
 import {
   fetchAccounts,
+  getCachedResponse,
   saveConfig,
   getErrorMessage,
   stringSimilarity,
@@ -52,16 +53,16 @@ export function SetupMapping() {
     async function load() {
       setIsLoading(true);
       try {
+        const cached = getCachedResponse();
         const [sfResponse, wfAccs] = await Promise.all([
-          fetchAccounts(accessUrl!),
+          cached ? Promise.resolve(cached.data) : fetchAccounts(accessUrl!),
           ctx.api.accounts.getAll(),
         ]);
         setSfAccounts(sfResponse.accounts);
         const active = wfAccs.filter((a) => a.isActive);
         setWfAccounts(active);
-        if (sfResponse.errlist?.length > 0) {
-          setSfErrors(sfResponse.errlist.map((e) => e.message));
-        }
+        const realErrors = (sfResponse.errlist ?? []).map((e) => e.message).filter(Boolean);
+        if (realErrors.length > 0) setSfErrors(realErrors);
         if (config?.mappings.length) {
           const existing: Record<string, string> = {};
           for (const m of config.mappings) {
