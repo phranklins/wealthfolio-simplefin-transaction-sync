@@ -218,6 +218,7 @@ export function SyncPage() {
   // Wealthfolio accounts loaded on mount for stale-mapping detection
   const [wfAccountMap, setWfAccountMap] = useState<Map<string, Account>>(new Map());
   const [wfAccountsLoaded, setWfAccountsLoaded] = useState(false);
+  const [idleActivities, setIdleActivities] = useState<ActivityDetails[]>([]);
   const [wfCashBalances, setWfCashBalances] = useState<Map<string, number>>(new Map());
   const [reconcilingId, setReconcilingId] = useState<string | null>(null);
 
@@ -263,7 +264,7 @@ export function SyncPage() {
     }
   }, [config]);
 
-  // Load WF accounts on mount to detect stale mappings
+  // Load WF accounts and activities on mount
   useEffect(() => {
     ctx.api.accounts
       .getAll()
@@ -274,6 +275,9 @@ export function SyncPage() {
       .catch(() => {
         setWfAccountsLoaded(true);
       });
+    (ctx.api.activities.getAll() as Promise<ActivityDetails[]>)
+      .then(setIdleActivities)
+      .catch(() => {});
   }, [ctx]);
 
   // Load cash balances for each mapped account (holdings-based, since Account has no balance field)
@@ -308,6 +312,24 @@ export function SyncPage() {
     const mappedIds = new Set(config?.mappings.map((m) => m.simpleFinAccountId) ?? []);
     return [...cachedAccountMap.values()].filter((a) => !mappedIds.has(a.id));
   }, [cachedAccountMap, config]);
+
+  // Per-account idle stats: skipped / matched (has WF activity) / unmatched (new)
+  const idleAccountStats = useMemo(() => {
+    if (!config?.mappings.length) return new Map<string, { skipped: number; matched: number; unmatched: number }>();
+    return new Map(
+      config.mappings.map((mapping) => {
+        const sfAccount = cachedAccountMap.get(mapping.simpleFinAccountId);
+        const settled = (sfAccount?.transactions ?? []).filter((tx) => !tx.pending);
+        const matches = idleActivities.length
+          ? matchTransactions(settled, idleActivities, mapping)
+          : [];
+        const skipped = settled.filter((tx) => skippedIds.has(`${mapping.simpleFinAccountId}:${tx.id}`)).length;
+        const matched = matches.filter((m) => m.confidence !== "new" && !skippedIds.has(`${mapping.simpleFinAccountId}:${m.simpleFinTransaction.id}`)).length;
+        const unmatched = matches.filter((m) => m.confidence === "new" && !skippedIds.has(`${mapping.simpleFinAccountId}:${m.simpleFinTransaction.id}`)).length;
+        return [mapping.simpleFinAccountId, { skipped, matched, unmatched }] as const;
+      }),
+    );
+  }, [config, cachedAccountMap, idleActivities, skippedIds]);
 
   const showInvestmentCols = useMemo(
     () => Array.from(accountTypeMap.values()).some(Boolean),
@@ -1061,18 +1083,30 @@ export function SyncPage() {
                           </div>
                         )}
 
-                        {cachedSf && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {cachedSf.transactions.length} transaction
-                            {cachedSf.transactions.length !== 1 ? "s" : ""} in last{" "}
-                            {config?.syncDays ?? 90} days
-                            {isStale && lastFetch && (
-                              <span className="ml-1.5 text-yellow-600 dark:text-yellow-400">
-                                · stale
-                              </span>
-                            )}
-                          </p>
-                        )}
+                        {cachedSf && (() => {
+                          const stats = idleAccountStats.get(mapping.simpleFinAccountId);
+                          return (
+                            <div className="mt-2 space-y-0.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground">New</span>
+                                <span className="font-medium tabular-nums">{stats?.unmatched ?? "—"}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground">Matched</span>
+                                <span className="font-medium tabular-nums">{stats?.matched ?? "—"}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground">Skipped</span>
+                                <span className="font-medium tabular-nums">{stats?.skipped ?? "—"}</span>
+                              </div>
+                              {isStale && lastFetch && (
+                                <p className="text-[10px] text-yellow-600 dark:text-yellow-400 pt-0.5">
+                                  Data may be stale
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </>
                     )}
                   </CardContent>
