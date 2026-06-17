@@ -39,6 +39,7 @@ export function SetupMapping() {
   const { ctx, accessUrl, config, refresh, reconfiguring, setReconfiguring } = useBankSyncAddon();
   const [sfAccounts, setSfAccounts] = useState<SimpleFinAccount[]>([]);
   const [wfAccounts, setWfAccounts] = useState<Account[]>([]);
+  const [wfBalances, setWfBalances] = useState<Map<string, number>>(new Map());
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [newAccountForms, setNewAccountForms] = useState<Record<string, NewAccountForm>>({});
   const [sfErrors, setSfErrors] = useState<string[]>([]);
@@ -55,7 +56,8 @@ export function SetupMapping() {
           ctx.api.accounts.getAll(),
         ]);
         setSfAccounts(sfResponse.accounts);
-        setWfAccounts(wfAccs.filter((a) => a.isActive));
+        const active = wfAccs.filter((a) => a.isActive);
+        setWfAccounts(active);
         if (sfResponse.errlist?.length > 0) {
           setSfErrors(sfResponse.errlist.map((e) => e.message));
         }
@@ -66,6 +68,16 @@ export function SetupMapping() {
           }
           setSelections(existing);
         }
+        // Fetch holdings balances for all accounts in parallel after the main load
+        Promise.all(
+          active.map((wf) =>
+            ctx.api.portfolio
+              .getHoldings(wf.id)
+              .then((h) => h.filter((x) => x.holdingType === "cash").reduce((s, x) => s + x.marketValue.local, 0))
+              .catch(() => 0)
+              .then((bal) => [wf.id, bal] as const),
+          ),
+        ).then((entries) => setWfBalances(new Map(entries)));
       } catch (err) {
         setError(getErrorMessage(err, "Failed to load accounts."));
       } finally {
@@ -250,7 +262,14 @@ export function SetupMapping() {
                     {wfAccounts.length > 0 && <SelectSeparator />}
                     {wfAccounts.map((wf) => (
                       <SelectItem key={wf.id} value={wf.id} disabled={claimedByOthers.has(wf.id)}>
-                        {wf.name} ({wf.currency})
+                        <span className="flex items-center gap-3">
+                          <span>{wf.name}</span>
+                          {wfBalances.has(wf.id) && (
+                            <span className="font-mono text-xs text-muted-foreground">
+                              <PrivacyAmount value={wfBalances.get(wf.id)!} currency={wf.currency} />
+                            </span>
+                          )}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
