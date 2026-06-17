@@ -38,16 +38,15 @@ export default function enable(ctx: AddonContext) {
   });
 
   const Wrapper = () => <AddonRoot ctx={ctx} />;
+
   ctx.router.add({
     path: "/addon/bank-sync",
     component: React.lazy(() => Promise.resolve({ default: Wrapper })),
   });
 
-  ctx.onDisable(() => {
-    try {
+  return {
+    disable() {
       sidebarItem.remove();
-    } catch (err) {
-      ctx.api.logger.error(`Failed to remove sidebar item: ${err}`);
-    }
-  });
+    },
+  };
 }
