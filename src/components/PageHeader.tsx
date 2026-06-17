@@ -12,9 +12,10 @@ interface PageHeaderProps {
   subtitle?: string;
   onBack?: () => void;
   actions?: ReactNode;
+  showPrivacyToggle?: boolean;
 }
 
-export function PageHeader({ title, icon, subtitle, onBack, actions }: PageHeaderProps) {
+export function PageHeader({ title, icon, subtitle, onBack, actions, showPrivacyToggle = true }: PageHeaderProps) {
   const { isBalanceHidden, toggleBalanceVisibility } = useBalancePrivacy();
 
   return (
@@ -46,14 +47,16 @@ export function PageHeader({ title, icon, subtitle, onBack, actions }: PageHeade
       </div>
       <div className="flex items-center gap-2">
         {actions}
-        <button
-          type="button"
-          onClick={toggleBalanceVisibility}
-          aria-label={isBalanceHidden ? "Show amounts" : "Hide amounts"}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-        >
-          {isBalanceHidden ? <Icons.EyeOff className="h-4 w-4" /> : <Icons.Eye className="h-4 w-4" />}
-        </button>
+        {showPrivacyToggle && (
+          <button
+            type="button"
+            onClick={toggleBalanceVisibility}
+            aria-label={isBalanceHidden ? "Show amounts" : "Hide amounts"}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+          >
+            {isBalanceHidden ? <Icons.EyeOff className="h-4 w-4" /> : <Icons.Eye className="h-4 w-4" />}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -77,6 +77,7 @@ export function SetupAuth() {
       <PageHeader
         icon={<Icons.Link className="h-5 w-5 text-primary" />}
         title="Connect SimpleFin Bridge"
+        showPrivacyToggle={false}
       />
 
       <Card>
@@ -98,7 +99,7 @@ export function SetupAuth() {
             </span>
             <span className="block">
               The token is single-use. Once exchanged, your access credential is stored securely in
-              Wealthfolio's encrypted system keyring — never in plain text.
+              Wealthfolio's encrypted system keyring.
             </span>
           </CardDescription>
         </CardHeader>
