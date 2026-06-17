@@ -231,7 +231,7 @@ export function SetupMapping() {
         onBack={reconfiguring ? () => setReconfiguring(false) : undefined}
         actions={
           wfAccounts.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handleGuess}>
+            <Button variant="outline" size="sm" onClick={handleGuess} disabled={allAccountsSelected}>
               <Icons.Sparkles className="h-3.5 w-3.5 mr-1.5" />
               Guess
             </Button>
