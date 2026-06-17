@@ -300,7 +300,7 @@ export function SetupMapping() {
                   onValueChange={(val) => handleSelectChange(sf.id, val)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select or skip..." />
+                    <SelectValue placeholder="Select or skip..." className="!line-clamp-none overflow-visible" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={SKIP_SENTINEL}>
