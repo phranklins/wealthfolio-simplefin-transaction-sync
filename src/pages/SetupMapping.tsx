@@ -17,6 +17,7 @@ import {
   Icons,
 } from "@wealthfolio/ui";
 import type { Account } from "@wealthfolio/addon-sdk";
+import { PrivacyAmount } from "@wealthfolio/ui";
 import {
   fetchAccounts,
   saveConfig,
@@ -28,7 +29,7 @@ import {
   CREATE_SECURITIES_SENTINEL,
 } from "../lib";
 import { useBankSyncAddon } from "../contexts/BankSyncAddonProvider";
-import { SfErrorsAlert, PageHeader, PrivacyAmount } from "../components";
+import { SfErrorsAlert, PageHeader } from "../components";
 import type { SimpleFinAccount, AccountMapping } from "../types";
 import { DEFAULT_CONFIG } from "../types";
 
@@ -205,7 +206,7 @@ export function SetupMapping() {
                     </CardDescription>
                   </div>
                   <Badge variant="outline" className="font-mono text-xs">
-                    <PrivacyAmount value={sf.balance} currency={sf.currency} />
+                    <PrivacyAmount value={parseFloat(sf.balance)} currency={sf.currency} />
                   </Badge>
                 </div>
               </CardHeader>

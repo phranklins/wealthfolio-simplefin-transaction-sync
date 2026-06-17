@@ -11,8 +11,6 @@ interface AddonState {
   reconfiguring: boolean;
   setReconfiguring: (v: boolean) => void;
   refresh: (showLoading?: boolean) => Promise<void>;
-  privacyMode: boolean;
-  togglePrivacy: () => void;
 }
 
 const Ctx = createContext<AddonState | null>(null);
@@ -28,16 +26,6 @@ export function BankSyncAddonProvider({
   const [config, setConfig] = useState<AddonConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [reconfiguring, setReconfiguring] = useState(false);
-  const [privacyMode, setPrivacyMode] = useState(
-    () => localStorage.getItem("bank-sync:privacy-mode") === "true",
-  );
-  const togglePrivacy = useCallback(() => {
-    setPrivacyMode((prev) => {
-      const next = !prev;
-      localStorage.setItem("bank-sync:privacy-mode", String(next));
-      return next;
-    });
-  }, []);
 
   const refresh = useCallback(
     async (showLoading = false) => {
@@ -71,8 +59,6 @@ export function BankSyncAddonProvider({
         reconfiguring,
         setReconfiguring,
         refresh,
-        privacyMode,
-        togglePrivacy,
       }}
     >
       {children}

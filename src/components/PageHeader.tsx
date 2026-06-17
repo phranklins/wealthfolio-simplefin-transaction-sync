@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import { Icons } from "@wealthfolio/ui";
-import { useBankSyncAddon } from "../contexts/BankSyncAddonProvider";
+import { Icons, useBalancePrivacy } from "@wealthfolio/ui";
 
 /**
  * PageHeader component renders a header section for a page, including a title, optional icon, subtitle, back button, and action buttons.
@@ -16,7 +15,7 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, icon, subtitle, onBack, actions }: PageHeaderProps) {
-  const { privacyMode, togglePrivacy } = useBankSyncAddon();
+  const { isBalanceHidden, toggleBalanceVisibility } = useBalancePrivacy();
 
   return (
     <div className="flex items-center justify-between mb-6">
@@ -49,11 +48,11 @@ export function PageHeader({ title, icon, subtitle, onBack, actions }: PageHeade
         {actions}
         <button
           type="button"
-          onClick={togglePrivacy}
-          aria-label={privacyMode ? "Show amounts" : "Hide amounts"}
+          onClick={toggleBalanceVisibility}
+          aria-label={isBalanceHidden ? "Show amounts" : "Hide amounts"}
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
         >
-          {privacyMode ? <Icons.EyeOff className="h-4 w-4" /> : <Icons.Eye className="h-4 w-4" />}
+          {isBalanceHidden ? <Icons.EyeOff className="h-4 w-4" /> : <Icons.Eye className="h-4 w-4" />}
         </button>
       </div>
     </div>

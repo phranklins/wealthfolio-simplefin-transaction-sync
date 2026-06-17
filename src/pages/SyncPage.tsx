@@ -25,6 +25,8 @@ import {
   Separator,
   Skeleton,
   Icons,
+  PrivacyAmount,
+  useBalancePrivacy,
 } from "@wealthfolio/ui";
 import type {
   Account,
@@ -68,7 +70,7 @@ import type {
   AccountMapping,
 } from "../types";
 import { formatDistanceToNow } from "../lib/date";
-import { ConfettiBurst, PopoverApiLog, PageHeader, PrivacyAmount, SfErrorsAlert } from "../components";
+import { ConfettiBurst, PopoverApiLog, PageHeader, SfErrorsAlert } from "../components";
 
 const ACTIVITY_ICONS: Record<string, ReactNode> = {
   BUY: <Icons.TrendingUp className="h-3.5 w-3.5" />,
@@ -180,7 +182,8 @@ function StepIndicator({ current }: { current: Step }) {
 }
 
 export function SyncPage() {
-  const { ctx, accessUrl, config, refresh, setReconfiguring, privacyMode } = useBankSyncAddon();
+  const { ctx, accessUrl, config, refresh, setReconfiguring } = useBankSyncAddon();
+  const { isBalanceHidden } = useBalancePrivacy();
 
   const [step, setStep] = useState<Step>("idle");
   const [sfErrors, setSfErrors] = useState<string[]>([]);
@@ -983,9 +986,8 @@ export function SyncPage() {
                                 >
                                   {cachedSf ? (
                                     <PrivacyAmount
-                                      value={cachedSf.balance}
+                                      value={Math.abs(parseFloat(cachedSf.balance))}
                                       currency={mapping.simpleFinCurrency}
-                                      abs
                                     />
                                   ) : (
                                     "—"
@@ -1001,9 +1003,8 @@ export function SyncPage() {
                                 >
                                   {!isNaN(wfBalance) ? (
                                     <PrivacyAmount
-                                      value={wfBalance}
+                                      value={Math.abs(wfBalance)}
                                       currency={mapping.simpleFinCurrency}
-                                      abs
                                     />
                                   ) : (
                                     "—"
@@ -1031,7 +1032,7 @@ export function SyncPage() {
                               ) : (
                                 <>
                                   <Icons.ArrowLeftRight className="h-3 w-3 mr-1" />
-                                  Reconcile {!privacyMode && (balanceDiff > 0 ? "+" : "")}
+                                  Reconcile {!isBalanceHidden && (balanceDiff > 0 ? "+" : "")}
                                   <PrivacyAmount
                                     value={Math.abs(balanceDiff)}
                                     currency={mapping.simpleFinCurrency}
@@ -1047,9 +1048,8 @@ export function SyncPage() {
                             >
                               {cachedSf ? (
                                 <PrivacyAmount
-                                  value={cachedSf.balance}
+                                  value={Math.abs(parseFloat(cachedSf.balance))}
                                   currency={mapping.simpleFinCurrency}
-                                  abs
                                 />
                               ) : (
                                 "—"
@@ -1103,7 +1103,7 @@ export function SyncPage() {
                       </Button>
                     </div>
                     <p className={`text-xl font-bold font-mono ${isNeg ? "text-red-500" : ""}`}>
-                      <PrivacyAmount value={sfAccount.balance} currency={sfAccount.currency} abs />
+                      <PrivacyAmount value={Math.abs(parseFloat(sfAccount.balance))} currency={sfAccount.currency} />
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Not linked to Wealthfolio</p>
                   </CardContent>
@@ -1545,7 +1545,7 @@ export function SyncPage() {
                             </td>
                             {showInvestmentCols && (
                               <td className="px-3 py-2 font-mono text-right">
-                                {privacyMode ? "••••••" : absAmt.toFixed(2)}
+                                {isBalanceHidden ? "••••••" : absAmt.toFixed(2)}
                               </td>
                             )}
                             <td
@@ -1646,8 +1646,8 @@ export function SyncPage() {
                               <td
                                 className={`p-3 text-right font-medium whitespace-nowrap ${isNeg ? "text-red-500" : "text-green-600"}`}
                               >
-                                {privacyMode ? null : isNeg ? "-" : ""}
-                                <PrivacyAmount value={sfTx.amount} currency={m.currency} abs />
+                                {!isBalanceHidden && (isNeg ? "-" : "")}
+                                <PrivacyAmount value={Math.abs(parseFloat(sfTx.amount))} currency={m.currency} />
                               </td>
                               <td className="p-3 text-right">
                                 <Button
@@ -1717,8 +1717,8 @@ export function SyncPage() {
                               <td
                                 className={`p-3 text-right font-medium whitespace-nowrap ${isNeg ? "text-red-500" : "text-green-600"}`}
                               >
-                                {privacyMode ? null : isNeg ? "-" : ""}
-                                <PrivacyAmount value={sfTx.amount} currency={m.currency} abs />
+                                {!isBalanceHidden && (isNeg ? "-" : "")}
+                                <PrivacyAmount value={Math.abs(parseFloat(sfTx.amount))} currency={m.currency} />
                               </td>
                               <td className="p-3">
                                 <Badge variant="outline" className="text-xs">
@@ -1906,7 +1906,7 @@ export function SyncPage() {
                 <span
                   className={`font-mono font-medium ${balanceDiscrepancy.diff > 0 ? "text-green-600" : "text-red-500"}`}
                 >
-                  {privacyMode ? null : balanceDiscrepancy.diff > 0 ? "+" : ""}
+                  {!isBalanceHidden && (balanceDiscrepancy.diff > 0 ? "+" : "")}
                   <PrivacyAmount
                     value={balanceDiscrepancy.diff}
                     currency={balanceDiscrepancy.currency}
