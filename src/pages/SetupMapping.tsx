@@ -73,7 +73,10 @@ export function SetupMapping() {
           active.map((wf) =>
             ctx.api.portfolio
               .getHoldings(wf.id)
-              .then((h) => h.filter((x) => x.holdingType === "cash").reduce((s, x) => s + x.marketValue.local, 0))
+              .then((h) => {
+                const relevant = wf.accountType === "SECURITIES" ? h : h.filter((x) => x.holdingType === "cash");
+                return relevant.reduce((s, x) => s + x.marketValue.local, 0);
+              })
               .catch(() => 0)
               .then((bal) => [wf.id, bal] as const),
           ),
