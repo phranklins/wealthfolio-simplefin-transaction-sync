@@ -136,50 +136,6 @@ function buildReconcileActivity(
 }
 
 
-function StepIndicator({ current }: { current: Step }) {
-  const steps = [
-    {
-      key: "fetch",
-      label: "Fetch",
-      done: ["reviewing", "confirming", "importing", "done"].includes(current),
-    },
-    { key: "review", label: "Review", done: ["confirming", "importing", "done"].includes(current) },
-    { key: "import", label: "Import", done: current === "done" },
-  ];
-  const activeIndex =
-    current === "idle" || current === "fetching" ? 0 : current === "reviewing" ? 1 : 2;
-
-  return (
-    <div className="flex items-center mb-6">
-      {steps.map((s, i) => (
-        <Fragment key={s.key}>
-          <div className="flex items-center gap-2">
-            <div
-              className={[
-                "flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-semibold shrink-0",
-                s.done
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : i === activeIndex
-                    ? "border-primary text-primary"
-                    : "border-muted text-muted-foreground",
-              ].join(" ")}
-            >
-              {s.done ? <Icons.Check className="h-3.5 w-3.5" /> : i + 1}
-            </div>
-            <span
-              className={`text-sm ${i === activeIndex ? "font-medium text-foreground" : "text-muted-foreground"}`}
-            >
-              {s.label}
-            </span>
-          </div>
-          {i < steps.length - 1 && (
-            <div className={`h-px flex-1 mx-3 ${s.done ? "bg-primary" : "bg-muted"}`} />
-          )}
-        </Fragment>
-      ))}
-    </div>
-  );
-}
 
 export function SyncPage() {
   const { ctx, accessUrl, config, refresh, setReconfiguring } = useBankSyncAddon();
@@ -749,7 +705,10 @@ export function SyncPage() {
   const isWide = step === "reviewing";
 
   return (
-    <div className={`p-6 mx-auto ${isWide ? "max-w-5xl" : "max-w-3xl"}`}>
+    <div
+      className={`p-6 mx-auto ${isWide ? "max-w-5xl" : "max-w-3xl"}`}
+      style={{ paddingBottom: "calc(1.5rem + var(--mobile-nav-ui-height, 0px) + max(var(--mobile-nav-gap, 0px), env(safe-area-inset-bottom, 0px)))" }}
+    >
       {/* Reconciliation confirmation */}
       <AlertDialog
         open={!!reconcileConfirm}
@@ -825,17 +784,14 @@ export function SyncPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
             {lastFetch && (
-              <Button
-                variant="outline"
+              <AlertDialogCancel
                 onClick={() => {
-                  setConfirmOpen(false);
                   doGlobalFetch(false);
                 }}
               >
-                Use cached data
-              </Button>
+                Continue using cached data
+              </AlertDialogCancel>
             )}
             <AlertDialogAction
               onClick={() => {
@@ -880,9 +836,6 @@ export function SyncPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Step wizard (hidden on idle — no active step) */}
-      {step !== "idle" && <StepIndicator current={step} />}
 
       <PageHeader
         icon={step === "idle" ? <Icons.Refresh className="h-5 w-5 text-primary" /> : undefined}
@@ -949,12 +902,21 @@ export function SyncPage() {
               const fmtSfIsNeg = cachedSf ? parseFloat(cachedSf.balance) < 0 : false;
               const fmtWfIsNeg = !isNaN(wfBalance) ? wfBalance < 0 : false;
 
+              const stats = idleAccountStats.get(mapping.simpleFinAccountId);
+              const hasAttentionNeeded = !!stats && (stats.unmatched > 0 || stats.skipped > 0);
+
+              const cardStyle: React.CSSProperties | undefined = wfMissing
+                ? { borderColor: "var(--destructive)", backgroundColor: "color-mix(in srgb, var(--destructive) 5%, transparent)" }
+                : hasAttentionNeeded
+                  ? { borderColor: "var(--warning)", backgroundColor: "color-mix(in srgb, var(--warning) 5%, transparent)" }
+                  : hasMismatch
+                    ? { borderColor: "color-mix(in srgb, var(--warning) 50%, transparent)", backgroundColor: "color-mix(in srgb, var(--warning) 5%, transparent)" }
+                    : undefined;
+
               return (
                 <Card
                   key={mapping.simpleFinAccountId}
-                  className={
-                    wfMissing ? "border-destructive" : hasMismatch ? "border-yellow-500/60" : ""
-                  }
+                  style={cardStyle}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2 mb-3">
@@ -1083,26 +1045,24 @@ export function SyncPage() {
                           </div>
                         )}
 
-                        {cachedSf && (() => {
-                          const stats = idleAccountStats.get(mapping.simpleFinAccountId);
-                          return (
+                        {cachedSf && stats && (
                             <div className="mt-3 pt-2 border-t">
                               <div className="grid grid-cols-3 divide-x">
                                 <div className="flex flex-col items-center gap-0.5 py-1">
-                                  <span className="text-sm font-bold tabular-nums text-primary">
-                                    {stats?.unmatched ?? "—"}
+                                  <span className={`text-sm font-bold tabular-nums ${stats.unmatched > 0 ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground"}`}>
+                                    {stats.unmatched}
                                   </span>
                                   <span className="text-[10px] uppercase tracking-wide text-muted-foreground">New</span>
                                 </div>
                                 <div className="flex flex-col items-center gap-0.5 py-1">
                                   <span className="text-sm font-bold tabular-nums text-green-500 dark:text-green-400">
-                                    {stats?.matched ?? "—"}
+                                    {stats.matched}
                                   </span>
                                   <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Matched</span>
                                 </div>
                                 <div className="flex flex-col items-center gap-0.5 py-1">
-                                  <span className="text-sm font-bold tabular-nums text-muted-foreground">
-                                    {stats?.skipped ?? "—"}
+                                  <span className={`text-sm font-bold tabular-nums ${stats.skipped > 0 ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground"}`}>
+                                    {stats.skipped}
                                   </span>
                                   <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Skipped</span>
                                 </div>
@@ -1113,8 +1073,7 @@ export function SyncPage() {
                                 </p>
                               )}
                             </div>
-                          );
-                        })()}
+                          )}
                       </>
                     )}
                   </CardContent>
@@ -1661,10 +1620,8 @@ export function SyncPage() {
           {/* Permanently skipped collapsible */}
           {permanentlySkippedMatches.length > 0 && (
             <Collapsible>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="text-sm text-muted-foreground px-0">
-                  Permanently skipped ({permanentlySkippedMatches.length})
-                </Button>
+              <CollapsibleTrigger className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Permanently skipped ({permanentlySkippedMatches.length})
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2">
                 <Card>
@@ -1733,10 +1690,8 @@ export function SyncPage() {
           {/* Already-imported collapsible */}
           {highMatches.length > 0 && (
             <Collapsible>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="text-sm text-muted-foreground px-0">
-                  Already imported ({highMatches.length})
-                </Button>
+              <CollapsibleTrigger className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Already imported ({highMatches.length})
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2">
                 <Card>

@@ -41,6 +41,14 @@ The addon requests the minimum set of permissions needed to function:
 
 Every line of code in this project was written with AI assistance and reviewed by hand before being committed. No generated code ships without a human reading it first.
 
+## Disclaimer & Warranty
+
+This software is provided **"as is"**, without warranty of any kind, express or implied. Use it at your own risk.
+
+The author makes no guarantees about the accuracy of imported transactions, account balances, or any financial data processed by this addon. You are solely responsible for verifying that your financial data is correct after any sync operation. Always reconcile imported transactions against your official bank statements.
+
+Because this addon has access to sensitive financial data and your SimpleFin credentials, **you should read and understand the source code before installing or using it**. Do not install software that touches your finances without knowing what it does.
+
 ## License
 
 MIT

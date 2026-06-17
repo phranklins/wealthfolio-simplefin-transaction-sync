@@ -224,7 +224,10 @@ export function SetupMapping() {
   );
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div
+      className="p-6 max-w-2xl mx-auto"
+      style={{ paddingBottom: "calc(1.5rem + var(--mobile-nav-ui-height, 0px) + max(var(--mobile-nav-gap, 0px), env(safe-area-inset-bottom, 0px)))" }}
+    >
       <PageHeader
         icon={<Icons.ArrowLeftRight className="h-5 w-5 text-primary" />}
         title="Map Accounts"
