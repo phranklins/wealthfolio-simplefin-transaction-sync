@@ -1086,21 +1086,29 @@ export function SyncPage() {
                         {cachedSf && (() => {
                           const stats = idleAccountStats.get(mapping.simpleFinAccountId);
                           return (
-                            <div className="mt-2 space-y-0.5">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-muted-foreground">New</span>
-                                <span className="font-medium tabular-nums">{stats?.unmatched ?? "—"}</span>
-                              </div>
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-muted-foreground">Matched</span>
-                                <span className="font-medium tabular-nums">{stats?.matched ?? "—"}</span>
-                              </div>
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-muted-foreground">Skipped</span>
-                                <span className="font-medium tabular-nums">{stats?.skipped ?? "—"}</span>
+                            <div className="mt-3 pt-2 border-t">
+                              <div className="grid grid-cols-3 divide-x">
+                                <div className="flex flex-col items-center gap-0.5 py-1">
+                                  <span className="text-sm font-bold tabular-nums text-primary">
+                                    {stats?.unmatched ?? "—"}
+                                  </span>
+                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">New</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-0.5 py-1">
+                                  <span className="text-sm font-bold tabular-nums text-green-500 dark:text-green-400">
+                                    {stats?.matched ?? "—"}
+                                  </span>
+                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Matched</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-0.5 py-1">
+                                  <span className="text-sm font-bold tabular-nums text-muted-foreground">
+                                    {stats?.skipped ?? "—"}
+                                  </span>
+                                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Skipped</span>
+                                </div>
                               </div>
                               {isStale && lastFetch && (
-                                <p className="text-[10px] text-yellow-600 dark:text-yellow-400 pt-0.5">
+                                <p className="text-[10px] text-yellow-600 dark:text-yellow-400 text-center pt-1">
                                   Data may be stale
                                 </p>
                               )}
