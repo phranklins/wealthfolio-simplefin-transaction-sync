@@ -3,6 +3,11 @@ import type { AddonContext } from "@wealthfolio/addon-sdk";
 import { loadCredentials, loadConfig } from "../lib";
 import type { AddonConfig } from "../types";
 
+/**
+ * Provides a context for the BankSync addon, allowing components to access the current
+ * configuration, credentials, and loading state.
+ */
+
 interface AddonState {
   ctx: AddonContext;
   accessUrl: string | null;

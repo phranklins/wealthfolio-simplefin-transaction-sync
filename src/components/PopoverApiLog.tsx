@@ -2,6 +2,11 @@ import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@wealthfolio/ui";
 import type { ApiLogEntry } from "../lib";
 
+/**
+ * Shows a simple popover that lists the history of API calls made to the API.
+ * This is useful for debugging and monitoring purposes.
+ */
+
 export function PopoverApiLog({ log, total }: { log: ApiLogEntry[]; total: number }) {
   const [open, setOpen] = useState(false);
   return (
