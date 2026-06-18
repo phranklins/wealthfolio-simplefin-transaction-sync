@@ -1,8 +1,9 @@
 # Bank Sync Addon for Wealthfolio
 
-> **Disclaimer:** This is an independent fan project and is not affiliated with, endorsed by, or associated with [SimpleFin](https://simplefin.org) or [Wealthfolio](https://wealthfolio.app) in any way.
-
 A [Wealthfolio](https://wealthfolio.app) addon that pulls your transactions from [SimpleFin Bridge](https://bridge.simplefin.org) and imports them into Wealthfolio — with fuzzy duplicate detection so you never double-count a transaction.
+
+> [!WARNING]
+> This is an independent project and is not affiliated with, endorsed by, or associated with [SimpleFin](https://simplefin.org) or [Wealthfolio](https://wealthfolio.app) in any way.
 
 ## What it does
 
@@ -11,11 +12,17 @@ This addon secure connects to SimpleFin Bridge's API to fetch your accounts and 
 1. You paste a one-time Setup Token from SimpleFin Bridge
 2. The addon exchanges it for a persistent Access URL (stored securely in Wealthfolio's secret store)
 3. On first sync, you match your SimpleFin accounts to your Wealthfolio accounts.
-3. On each subsequent sync, it fetches your accounts and transactions from SimpleFin
-4. Incoming transactions are fuzzy-matched against your existing Wealthfolio activities by amount, date, and description
-5. You review the results and confirm which transactions to import
+4. On each subsequent sync, it fetches your accounts and transactions from SimpleFin
+5. Incoming transactions are fuzzy-matched against your existing Wealthfolio activities by amount, date, and description
+6. You review the results and confirm which transactions to import
 
 The addon caches fetched account data to minimize API calls. You can trigger a manual refresh if you make changes in SimpleFin Bridge or you think there's new transactions to sync.
+
+## Screenshots
+
+| Connect SimpleFin Bridge | Map Accounts | Bank Sync Dashboard |
+|:---:|:---:|:---:|
+| ![Connect SimpleFin Bridge](images/bridge.jpg) | ![Map Accounts](images/account_mapping.jpg) | ![Bank Sync Dashboard](images/sync.jpg) |
 
 ## Requirements
 
@@ -43,11 +50,12 @@ Every line of code in this project was written with AI assistance and reviewed b
 
 ## Disclaimer & Warranty
 
-This software is provided **"as is"**, without warranty of any kind, express or implied. Use it at your own risk.
-
-The author makes no guarantees about the accuracy of imported transactions, account balances, or any financial data processed by this addon. You are solely responsible for verifying that your financial data is correct after any sync operation. Always reconcile imported transactions against your official bank statements.
-
-Because this addon has access to sensitive financial data and your SimpleFin credentials, **you should read and understand the source code before installing or using it**. Do not install software that touches your finances without knowing what it does.
+> [!WARNING]
+> This software is provided **"as is"**, without warranty of any kind, express or implied. Use it at your own risk.
+>
+> The author makes no guarantees about the accuracy of imported transactions, account balances, or any financial data processed by this addon. You are solely responsible for verifying that your financial data is correct after any sync operation. Always reconcile imported transactions against your official bank statements.
+>
+> Because this addon has access to sensitive financial data and your SimpleFin credentials, **you should read and understand the source code before installing or using it**. Do not install software that touches your finances without knowing what it does. But you probably will anyways.
 
 ## License
 
