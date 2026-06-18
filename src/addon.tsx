@@ -4,16 +4,8 @@ import { Icons } from "@wealthfolio/ui";
 import { BankSyncAddonProvider, useBankSyncAddon } from "./contexts/BankSyncAddonProvider";
 import { SetupAuth, SetupMapping, SyncPage } from "./pages";
 
-function AddonRoot({ ctx }: { ctx: AddonContext }) {
-  return (
-    <BankSyncAddonProvider ctx={ctx}>
-      <AddonRouter />
-    </BankSyncAddonProvider>
-  );
-}
-
 function AddonRouter() {
-  const { accessUrl, config, isLoading, reconfiguring } = useBankSyncAddon();
+  const { accessUrl, config, isLoading } = useBankSyncAddon();
 
   if (isLoading) {
     return (
@@ -24,7 +16,7 @@ function AddonRouter() {
   }
 
   if (!accessUrl) return <SetupAuth />;
-  if (!config?.mappings.length || reconfiguring) return <SetupMapping />;
+  if (!config?.mappings.length || config?.isReconfiguring) return <SetupMapping />;
   return <SyncPage />;
 }
 
@@ -37,7 +29,11 @@ export default function enable(ctx: AddonContext) {
     order: 100,
   });
 
-  const Wrapper = () => <AddonRoot ctx={ctx} />;
+  const Wrapper = () => (
+    <BankSyncAddonProvider ctx={ctx}>
+      <AddonRouter />
+    </BankSyncAddonProvider>
+  );
 
   ctx.router.add({
     path: "/addon/bank-sync",

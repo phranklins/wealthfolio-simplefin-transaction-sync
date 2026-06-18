@@ -38,7 +38,7 @@ import { DEFAULT_CONFIG } from "../types";
 type NewAccountForm = { name: string; accountType: "CASH" | "SECURITIES"; currency: string };
 
 export function SetupMapping() {
-  const { ctx, accessUrl, config, refresh, reconfiguring, setReconfiguring } = useBankSyncAddon();
+  const { ctx, accessUrl, config, refresh } = useBankSyncAddon();
   const [sfAccounts, setSfAccounts] = useState<SimpleFinAccount[]>([]);
   const [wfAccounts, setWfAccounts] = useState<Account[]>([]);
   const [wfBalances, setWfBalances] = useState<Map<string, number>>(new Map());
@@ -209,6 +209,7 @@ export function SetupMapping() {
       await saveConfig(ctx.api.secrets, {
         ...(config ?? DEFAULT_CONFIG),
         mappings: newMappings,
+        isReconfiguring: false,
       });
       refresh(true);
     } catch (err) {
@@ -231,7 +232,10 @@ export function SetupMapping() {
       <PageHeader
         icon={<Icons.ArrowLeftRight className="h-5 w-5 text-primary" />}
         title="Map Accounts"
-        onBack={reconfiguring ? () => setReconfiguring(false) : undefined}
+        onBack={config?.mappings.length ? async () => {
+          await saveConfig(ctx.api.secrets, { ...config, isReconfiguring: false });
+          refresh(true);
+        } : undefined}
         actions={
           wfAccounts.length > 0 && (
             <Button variant="outline" size="sm" onClick={handleGuess} disabled={allAccountsSelected}>

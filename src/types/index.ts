@@ -51,6 +51,7 @@ export interface AddonConfig {
   staleThresholdHours: StaleThresholdHours;
   syncDays: SyncDays;
   lastFetchTimestamp: number | null;
+  isReconfiguring?: boolean;
 }
 
 export const DEFAULT_CONFIG: AddonConfig = {

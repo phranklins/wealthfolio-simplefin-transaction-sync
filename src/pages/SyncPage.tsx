@@ -138,7 +138,7 @@ function buildReconcileActivity(
 
 
 export function SyncPage() {
-  const { ctx, accessUrl, config, refresh, setReconfiguring } = useBankSyncAddon();
+  const { ctx, accessUrl, config, refresh } = useBankSyncAddon();
   const { isBalanceHidden } = useBalancePrivacy();
 
   const [step, setStep] = useState<Step>("idle");
@@ -696,8 +696,10 @@ export function SyncPage() {
     refresh();
   }
 
-  function handleReconfigureAccounts() {
-    setReconfiguring(true);
+  async function handleReconfigureAccounts() {
+    if (!config) return;
+    await saveConfig(ctx.api.secrets, { ...config, isReconfiguring: true });
+    refresh();
   }
 
   // ── Render ────────────────────────────────────────────────────────────────

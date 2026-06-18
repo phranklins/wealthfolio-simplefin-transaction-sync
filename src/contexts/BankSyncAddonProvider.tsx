@@ -3,18 +3,11 @@ import type { AddonContext } from "@wealthfolio/addon-sdk";
 import { loadCredentials, loadConfig } from "../lib";
 import type { AddonConfig } from "../types";
 
-/**
- * Provides a context for the BankSync addon, allowing components to access the current
- * configuration, credentials, and loading state.
- */
-
 interface AddonState {
   ctx: AddonContext;
   accessUrl: string | null;
   config: AddonConfig | null;
   isLoading: boolean;
-  reconfiguring: boolean;
-  setReconfiguring: (v: boolean) => void;
   refresh: (showLoading?: boolean) => Promise<void>;
 }
 
@@ -30,12 +23,10 @@ export function BankSyncAddonProvider({
   const [accessUrl, setAccessUrl] = useState<string | null>(null);
   const [config, setConfig] = useState<AddonConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [reconfiguring, setReconfiguring] = useState(false);
 
   const refresh = useCallback(
     async (showLoading = false) => {
       if (showLoading) setIsLoading(true);
-      setReconfiguring(false);
       try {
         const [url, cfg] = await Promise.all([
           loadCredentials(ctx.api.secrets),
@@ -55,17 +46,7 @@ export function BankSyncAddonProvider({
   }, [refresh]);
 
   return (
-    <Ctx.Provider
-      value={{
-        ctx,
-        accessUrl,
-        config,
-        isLoading,
-        reconfiguring,
-        setReconfiguring,
-        refresh,
-      }}
-    >
+    <Ctx.Provider value={{ ctx, accessUrl, config, isLoading, refresh }}>
       {children}
     </Ctx.Provider>
   );
