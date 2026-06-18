@@ -26,7 +26,7 @@ The addon caches fetched account data to minimize API calls. You can trigger a m
 
 ## Requirements
 
-- [Wealthfolio](https://wealthfolio.app) desktop app
+- [Wealthfolio](https://wealthfolio.app) desktop app or self-hosted web app
 - A subscription to [SimpleFin Bridge](https://bridge.simplefin.org) connected financial institutions
 
 ## Permissions
@@ -43,10 +43,6 @@ The addon requests the minimum set of permissions needed to function:
 | `portfolio.getHoldings` | Read account balances to help identify accounts during setup |
 | `secrets.get/set/delete` | Persist the SimpleFin Access URL in Wealthfolio's encrypted keyring |
 | `sidebar.addItem` | Navigation entry point |
-
-## A note on how this was built
-
-Every line of code in this project was written with AI assistance and reviewed by hand before being committed. No generated code ships without a human reading it first.
 
 ## Disclaimer & Warranty
 

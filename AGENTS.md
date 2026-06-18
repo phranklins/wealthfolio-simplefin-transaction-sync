@@ -4,6 +4,47 @@
 
 A Wealthfolio addon (`wealthfolio-bank-sync`) that pulls transaction data from [SimpleFin Bridge](https://bridge.simplefin.org) and imports it into Wealthfolio accounts. Fuzzy matching prevents duplicate imports.
 
+---
+
+## Behavioral Guidelines
+
+**These come first because they prevent the most mistakes.**
+
+### 1. Think Before Coding
+
+- State assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them—don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+
+### 2. Simplicity First
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No error handling for impossible scenarios.
+- If 200 lines could be 50, rewrite it.
+
+### 3. Surgical Changes
+
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated issues, mention them—don't fix them.
+- Remove only what YOUR changes made unused.
+
+### 4. Goal-Driven Execution
+
+- Transform tasks into verifiable goals.
+- For multi-step tasks, state a brief plan with verification steps.
+- Unverified work is incomplete work.
+
+### 5. Output Precision
+
+- Lead with findings, not process descriptions.
+- Use structured formats (lists, tables, code blocks).
+- Include absolute file paths—never relative.
+
+---
+
 ## Commands
 
 All commands run from the repo root:

@@ -905,7 +905,7 @@ export function SyncPage() {
               const fmtWfIsNeg = !isNaN(wfBalance) ? wfBalance < 0 : false;
 
               const stats = idleAccountStats.get(mapping.simpleFinAccountId);
-              const hasAttentionNeeded = !!stats && (stats.unmatched > 0 || stats.skipped > 0);
+              const hasAttentionNeeded = !!stats && stats.unmatched > 0;
 
               const cardStyle: React.CSSProperties | undefined = wfMissing
                 ? { borderColor: "var(--destructive)", backgroundColor: "color-mix(in srgb, var(--destructive) 5%, transparent)" }
