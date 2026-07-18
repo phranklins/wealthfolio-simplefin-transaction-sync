@@ -342,7 +342,7 @@ export function SyncPage() {
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - (config!.syncDays ?? 90));
-    const sfResponse = await fetchAccounts(accessUrl!, start, end);
+    const sfResponse = await fetchAccounts(ctx.api.network, accessUrl!, start, end);
     const fetchedAt = Date.now();
     await setCachedResponse(ctx.api.secrets, sfResponse);
     setCacheTimestamp(fetchedAt);

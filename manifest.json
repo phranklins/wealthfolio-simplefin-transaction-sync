@@ -1,7 +1,7 @@
 {
   "id": "wealthfolio-bank-sync",
   "name": "Wealthfolio Simplefin Bank Sync",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Sync transaction data from SimpleFin Bridge to Wealthfolio",
   "author": "Franklin Shen (a fork from Mark Rickert's original code)",
   "main": "dist/addon.js",
@@ -32,8 +32,16 @@
       "category": "secrets",
       "functions": ["set", "get", "delete"],
       "purpose": "Securely store the SimpleFin access URL in Wealthfolio's encrypted keyring"
+    },
+    {
+      "category": "network",
+      "functions": ["request"],
+      "purpose": "Exchange the setup token and fetch account and transaction data from SimpleFin Bridge over HTTPS"
     }
   ],
+  "network": {
+    "allowedHosts": ["bridge.simplefin.org", "beta-bridge.simplefin.org"]
+  },
   "keywords": ["wealthfolio", "addon", "simplefin", "sync", "transactions"],
   "license": "MIT"
 }

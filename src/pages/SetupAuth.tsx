@@ -49,7 +49,7 @@ export function SetupAuth() {
     setError(null);
     setIsLoading(true);
     try {
-      const accessUrl = await claimAccessUrl(token);
+      const accessUrl = await claimAccessUrl(ctx.api.network, token);
       await saveCredentials(ctx.api.secrets, accessUrl);
       await deleteConfig(ctx.api.secrets);
       clearResponseCache();

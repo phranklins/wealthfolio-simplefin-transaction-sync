@@ -1,4 +1,14 @@
+import type { HostAPI } from "@wealthfolio/addon-sdk";
 import type { SimpleFinResponse } from "../types";
+
+// Wealthfolio 3.x sandboxes addon webviews and blocks direct fetch() to external
+// hosts. All SimpleFin traffic must go through the host's brokered network API,
+// whose target hosts are declared in manifest.json (`network.allowedHosts`).
+type NetworkAPI = HostAPI["network"];
+
+function isSuccess(status: number): boolean {
+  return status >= 200 && status < 300;
+}
 
 function parseAccessUrl(accessUrl: string): { baseUrl: string; authHeader: string } {
   const url = new URL(accessUrl);
@@ -14,7 +24,7 @@ function parseAccessUrl(accessUrl: string): { baseUrl: string; authHeader: strin
   return { baseUrl, authHeader };
 }
 
-export async function claimAccessUrl(setupToken: string): Promise<string> {
+export async function claimAccessUrl(network: NetworkAPI, setupToken: string): Promise<string> {
   let claimUrl: string;
   try {
     claimUrl = atob(setupToken.trim());
@@ -32,14 +42,11 @@ export async function claimAccessUrl(setupToken: string): Promise<string> {
     throw new Error("Refusing to claim over a non-HTTPS URL.");
   }
 
-  const response = await fetch(claimUrl, {
-    method: "POST",
-    headers: { "Content-Length": "0" },
-  });
-  if (!response.ok) {
-    throw new Error(`Failed to claim access URL: ${response.status} ${response.statusText}`);
+  const response = await network.request({ url: claimUrl, method: "POST" });
+  if (!isSuccess(response.status)) {
+    throw new Error(`Failed to claim access URL: ${response.status}`);
   }
-  const accessUrl = (await response.text()).trim();
+  const accessUrl = response.body.trim();
 
   // The returned access URL is stored and reused with Basic auth on every sync — reject
   // anything that isn't HTTPS so credentials can never be sent in the clear.
@@ -56,6 +63,7 @@ export async function claimAccessUrl(setupToken: string): Promise<string> {
 }
 
 export async function fetchAccounts(
+  network: NetworkAPI,
   accessUrl: string,
   startDate?: Date,
   endDate?: Date,
@@ -68,21 +76,18 @@ export async function fetchAccounts(
 
   const url = `${baseUrl}/accounts?${params.toString()}`;
 
-  const response = await fetch(url, {
+  const response = await network.request({
+    url,
+    method: "GET",
     headers: { Authorization: authHeader },
   });
 
-  if (!response.ok) {
-    let detail = "";
-    try {
-      detail = await response.text();
-    } catch {
-      /* ignore */
-    }
-    throw new Error(`SimpleFin returned ${response.status}${detail ? `: ${detail.trim()}` : ""}`);
+  if (!isSuccess(response.status)) {
+    const detail = (response.body ?? "").trim();
+    throw new Error(`SimpleFin returned ${response.status}${detail ? `: ${detail}` : ""}`);
   }
 
-  const data = (await response.json()) as SimpleFinResponse;
+  const data = JSON.parse(response.body) as SimpleFinResponse;
   // Normalize: errlist is optional in some SimpleFin environments (e.g. dev sandbox)
   data.errlist = data.errlist ?? [];
   return data;
