@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import type { AddonContext } from "@wealthfolio/addon-sdk";
-import { loadCredentials, loadConfig } from "../lib";
+import { loadCredentials, loadConfig, ensureBasicAuth } from "../lib";
 import type { AddonConfig } from "../types";
 
 interface AddonState {
@@ -32,6 +32,15 @@ export function BankSyncAddonProvider({
           loadCredentials(ctx.api.secrets),
           loadConfig(ctx.api.secrets),
         ]);
+        // Backfill the broker's Basic-auth secret for installs that connected
+        // before it existed (best-effort; never block loading on it).
+        if (url) {
+          try {
+            await ensureBasicAuth(ctx.api.secrets, url);
+          } catch {
+            /* ignore */
+          }
+        }
         setAccessUrl(url);
         setConfig(cfg);
       } finally {

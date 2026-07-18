@@ -80,3 +80,6 @@ export interface TransactionMatch {
 // Secrets storage keys
 export const SECRETS_KEY_CREDENTIALS = "credentials";
 export const SECRETS_KEY_CONFIG = "config";
+// Base64 "user:pass" the host network broker injects as Basic auth (it rejects a
+// raw Authorization header set by addon code).
+export const SECRETS_KEY_BASIC_AUTH = "basic-auth";

@@ -1,7 +1,7 @@
 {
   "id": "wealthfolio-bank-sync",
   "name": "Wealthfolio Simplefin Bank Sync",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Sync transaction data from SimpleFin Bridge to Wealthfolio",
   "author": "Franklin Shen (a fork from Mark Rickert's original code)",
   "main": "dist/addon.js",

@@ -1,5 +1,6 @@
 import type { HostAPI } from "@wealthfolio/addon-sdk";
 import type { SimpleFinResponse } from "../types";
+import { SECRETS_KEY_BASIC_AUTH } from "../types";
 
 // Wealthfolio 3.x sandboxes addon webviews and blocks direct fetch() to external
 // hosts. All SimpleFin traffic must go through the host's brokered network API,
@@ -10,18 +11,16 @@ function isSuccess(status: number): boolean {
   return status >= 200 && status < 300;
 }
 
-function parseAccessUrl(accessUrl: string): { baseUrl: string; authHeader: string } {
+// Strip the embedded credentials from the access URL; the broker supplies Basic auth
+// from the stored secret, so they must not appear in the request URL.
+function parseBaseUrl(accessUrl: string): string {
   const url = new URL(accessUrl);
   if (url.protocol !== "https:") {
     throw new Error("Refusing to use a non-HTTPS SimpleFin access URL.");
   }
-  const username = url.username;
-  const password = url.password;
   url.username = "";
   url.password = "";
-  const baseUrl = url.toString().replace(/\/$/, "");
-  const authHeader = "Basic " + btoa(`${username}:${password}`);
-  return { baseUrl, authHeader };
+  return url.toString().replace(/\/$/, "");
 }
 
 export async function claimAccessUrl(network: NetworkAPI, setupToken: string): Promise<string> {
@@ -68,7 +67,7 @@ export async function fetchAccounts(
   startDate?: Date,
   endDate?: Date,
 ): Promise<SimpleFinResponse> {
-  const { baseUrl, authHeader } = parseAccessUrl(accessUrl);
+  const baseUrl = parseBaseUrl(accessUrl);
 
   const params = new URLSearchParams({ version: "2" });
   if (startDate) params.set("start-date", String(Math.floor(startDate.getTime() / 1000)));
@@ -79,7 +78,9 @@ export async function fetchAccounts(
   const response = await network.request({
     url,
     method: "GET",
-    headers: { Authorization: authHeader },
+    // The broker injects Basic auth from the stored secret; a raw Authorization
+    // header is rejected by the host.
+    auth: { type: "basic", secretKey: SECRETS_KEY_BASIC_AUTH },
   });
 
   if (!isSuccess(response.status)) {
