@@ -91,7 +91,7 @@ src/
     simplefin.ts              claimAccessUrl(), fetchAccounts()
     matcher.ts                matchTransactions() — Dice coefficient fuzzy matching
     config.ts                 load/save/delete credentials and AddonConfig
-    cache.ts                  localStorage response cache (1-hour TTL)
+    cache.ts                  Response cache, encrypted at rest (AES-GCM key in keyring, ciphertext in localStorage)
     skipped.ts                Permanently skipped transaction IDs (localStorage)
     apiLog.ts                 API call log + stats (today/week/month/busiest hour)
     activityType.ts           guessActivityType(), guessSymbol() heuristics
@@ -168,6 +168,8 @@ A single route (`/addon/bank-sync`) renders `AddonRoot → AddonRouter`:
 3. `ACCESS_URL` saved via `saveCredentials()` (secrets key: `"credentials"`)
 4. Setup tokens are single-use — once claimed, the token is invalid
 
+Both the decoded claim URL and the returned `ACCESS_URL` are rejected unless they are HTTPS (`claimAccessUrl`), and `fetchAccounts` re-checks HTTPS on every request (`parseAccessUrl`) so basic-auth credentials can never be sent in the clear.
+
 ### Config
 `AddonConfig` is JSON-stringified in secrets (key: `"config"`). Defaults:
 ```ts
@@ -179,9 +181,9 @@ A single route (`/addon/bank-sync`) renders `AddonRoot → AddonRouter`:
 ### Fetch + cache
 `fetchAccounts(accessUrl, start, end)` extracts basic-auth credentials from the `ACCESS_URL`, sends `GET {baseUrl}/accounts?version=2&start-date=<unix>&end-date=<unix>` with `Authorization: Basic ...`.
 
-Response is cached in localStorage (`bank-sync:response-cache`, 1-hour TTL). The 1-hour cache is separate from the `staleThresholdHours` setting:
-- **1-hour cache** — use cached data silently if fresh; prompt if older
-- **staleThresholdHours** — shows a "stale" badge on account cards in the idle view
+The response is cached in localStorage (`bank-sync:response-cache`) **encrypted at rest**: an AES-256-GCM key is generated once and stored in the keyring (secret `cache-encryption-key`); only the IV + ciphertext are written to localStorage. Because reads decrypt through the keyring, `getCachedResponse` / `setCachedResponse` / `clearResponseCache` are all async and take the `secrets` API. Any legacy plaintext cache from older versions is discarded on read.
+
+The cache persists until a fresh fetch overwrites it, the sync window changes, or the user disconnects — it deliberately does **not** expire on a timer, to conserve SimpleFin's 24 requests/day. The `staleThresholdHours` setting only controls when a "stale" badge appears on account cards; it never purges data.
 
 SimpleFin rate limit is **24 requests/day** shared across all apps on the same connection. The addon tracks every API call in `bank-sync:api-log` and displays stats (today/week/month/avg/busiest hour). A warning is shown when `today >= 20`.
 
@@ -216,14 +218,27 @@ Confidence thresholds: `high` ≥ 80, `low` ≥ 40, `new` < 40.
 ### Balance reconciliation
 Detects when SimpleFin's reported balance differs from Wealthfolio's computed cash balance (from `portfolio.getHoldings`). Offers to create a single DEPOSIT or WITHDRAWAL adjustment entry. Available both after a sync (done step) and from the idle page account cards (when cached balance data shows a discrepancy).
 
+### Disconnect
+Settings → **Disconnect SimpleFin** (confirmation dialog, `handleDisconnect`) wipes everything this addon stored on the device: the `credentials`, `config`, and `cache-encryption-key` secrets, the encrypted response cache, and the skipped-transaction list. Imported Wealthfolio activities are untouched; the addon returns to `SetupAuth`. Note: `disable()` in `addon.tsx` only removes the sidebar item — it intentionally does **not** wipe credentials, so temporarily disabling the addon doesn't destroy setup.
+
 ## localStorage keys
 
 | Key | Contents |
 |---|---|
-| `bank-sync:response-cache` | `{ data: SimpleFinResponse, timestamp: number }` |
+| `bank-sync:response-cache` | `{ v: 2, iv, ct, timestamp }` — AES-GCM ciphertext of `{ data: SimpleFinResponse, timestamp }` (key lives in the keyring) |
 | `bank-sync:skipped-transactions` | `string[]` of permanently-skipped transaction keys (`"sfAccountId:txId"`) |
 | `bank-sync:privacy-mode` | `"true"` or `"false"` |
 | `bank-sync:api-log` | `ApiLogEntry[]` — `{ timestamp: number, syncDays: number }[]` (trimmed to 365 days) |
+
+## Secrets (keyring) keys
+
+Stored via `ctx.api.secrets` (OS-encrypted keyring). Keep blobs small — keyrings are size-limited on some platforms, which is why the response cache stays in localStorage (encrypted) rather than here.
+
+| Key | Contents |
+|---|---|
+| `credentials` | SimpleFin `ACCESS_URL` (includes basic-auth credentials) |
+| `config` | JSON-stringified `AddonConfig` (mappings + settings) |
+| `cache-encryption-key` | base64 AES-256-GCM key used to encrypt `bank-sync:response-cache` |
 
 ## Permissions (manifest.json)
 

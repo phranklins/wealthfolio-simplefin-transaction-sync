@@ -53,7 +53,7 @@ export function SetupMapping() {
     async function load() {
       setIsLoading(true);
       try {
-        const cached = getCachedResponse();
+        const cached = await getCachedResponse(ctx.api.secrets);
         const [sfResponse, wfAccs] = await Promise.all([
           cached ? Promise.resolve(cached.data) : fetchAccounts(accessUrl!),
           ctx.api.accounts.getAll(),

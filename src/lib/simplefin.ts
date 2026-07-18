@@ -2,6 +2,9 @@ import type { SimpleFinResponse } from "../types";
 
 function parseAccessUrl(accessUrl: string): { baseUrl: string; authHeader: string } {
   const url = new URL(accessUrl);
+  if (url.protocol !== "https:") {
+    throw new Error("Refusing to use a non-HTTPS SimpleFin access URL.");
+  }
   const username = url.username;
   const password = url.password;
   url.username = "";
@@ -12,7 +15,23 @@ function parseAccessUrl(accessUrl: string): { baseUrl: string; authHeader: strin
 }
 
 export async function claimAccessUrl(setupToken: string): Promise<string> {
-  const claimUrl = atob(setupToken.trim());
+  let claimUrl: string;
+  try {
+    claimUrl = atob(setupToken.trim());
+  } catch {
+    throw new Error("Invalid setup token — could not decode.");
+  }
+  let parsedClaim: URL;
+  try {
+    parsedClaim = new URL(claimUrl);
+  } catch {
+    throw new Error("Setup token did not decode to a valid URL.");
+  }
+  // The claim URL comes from user-pasted (base64) input; only POST credentials over HTTPS.
+  if (parsedClaim.protocol !== "https:") {
+    throw new Error("Refusing to claim over a non-HTTPS URL.");
+  }
+
   const response = await fetch(claimUrl, {
     method: "POST",
     headers: { "Content-Length": "0" },
@@ -20,8 +39,20 @@ export async function claimAccessUrl(setupToken: string): Promise<string> {
   if (!response.ok) {
     throw new Error(`Failed to claim access URL: ${response.status} ${response.statusText}`);
   }
-  const accessUrl = await response.text();
-  return accessUrl.trim();
+  const accessUrl = (await response.text()).trim();
+
+  // The returned access URL is stored and reused with Basic auth on every sync — reject
+  // anything that isn't HTTPS so credentials can never be sent in the clear.
+  let parsedAccess: URL;
+  try {
+    parsedAccess = new URL(accessUrl);
+  } catch {
+    throw new Error("SimpleFin returned an invalid access URL.");
+  }
+  if (parsedAccess.protocol !== "https:") {
+    throw new Error("SimpleFin returned a non-HTTPS access URL.");
+  }
+  return accessUrl;
 }
 
 export async function fetchAccounts(

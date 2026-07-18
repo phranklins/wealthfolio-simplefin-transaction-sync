@@ -38,10 +38,11 @@ import {
   fetchAccounts,
   matchTransactions,
   saveConfig,
+  deleteCredentials,
+  deleteConfig,
   getCachedResponse,
   setCachedResponse,
   clearResponseCache,
-  CACHE_TTL_MS,
   getApiLog,
   appendApiLog,
   getApiStats,
@@ -164,6 +165,9 @@ export function SyncPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [settingsExpanded, setSettingsExpanded] = useState(false);
   const [debugOpen, setDebugOpen] = useState(false);
+  const [debugCache, setDebugCache] =
+    useState<Awaited<ReturnType<typeof getCachedResponse>>>(null);
+  const [disconnectOpen, setDisconnectOpen] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
   const [accountTypeMap, setAccountTypeMap] = useState<Map<string, boolean>>(new Map());
@@ -258,11 +262,37 @@ export function SyncPage() {
   const isStale = !lastFetch || Date.now() - lastFetch > staleMs;
   const selectedMapping = config?.mappings.find((m) => m.simpleFinAccountId === selectedAccountId);
 
-  const cachedAccountMap = useMemo(() => {
-    const cached = getCachedResponse();
-    if (!cached) return new Map<string, SimpleFinAccount>();
-    return new Map<string, SimpleFinAccount>(cached.data.accounts.map((a) => [a.id, a]));
-  }, [cacheTimestamp]);
+  // Cache reads are async (data is decrypted from the keyring-backed store), so the account
+  // map lives in state and is refreshed whenever the cache timestamp changes.
+  const [cachedAccountMap, setCachedAccountMap] = useState<Map<string, SimpleFinAccount>>(
+    new Map(),
+  );
+  useEffect(() => {
+    let cancelled = false;
+    getCachedResponse(ctx.api.secrets).then((cached) => {
+      if (cancelled) return;
+      setCachedAccountMap(
+        cached
+          ? new Map<string, SimpleFinAccount>(cached.data.accounts.map((a) => [a.id, a]))
+          : new Map<string, SimpleFinAccount>(),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [cacheTimestamp, ctx]);
+
+  // Load the (decrypted) cache for the debug dialog only while it's open.
+  useEffect(() => {
+    if (!debugOpen) return;
+    let cancelled = false;
+    getCachedResponse(ctx.api.secrets).then((c) => {
+      if (!cancelled) setDebugCache(c);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [debugOpen, ctx]);
 
   const unmappedSfAccounts = useMemo(() => {
     const mappedIds = new Set(config?.mappings.map((m) => m.simpleFinAccountId) ?? []);
@@ -304,7 +334,7 @@ export function SyncPage() {
   }
 
   async function fetchOrUseCache(force: boolean): Promise<SimpleFinResponse> {
-    const cached = getCachedResponse();
+    const cached = await getCachedResponse(ctx.api.secrets);
     if (!force && cached) {
       setCacheTimestamp(cached.timestamp);
       return cached.data;
@@ -314,7 +344,7 @@ export function SyncPage() {
     start.setDate(end.getDate() - (config!.syncDays ?? 90));
     const sfResponse = await fetchAccounts(accessUrl!, start, end);
     const fetchedAt = Date.now();
-    setCachedResponse(sfResponse);
+    await setCachedResponse(ctx.api.secrets, sfResponse);
     setCacheTimestamp(fetchedAt);
     appendApiLog({ timestamp: fetchedAt, syncDays: config!.syncDays ?? 90 });
     setApiLog(getApiLog());
@@ -702,6 +732,18 @@ export function SyncPage() {
     refresh();
   }
 
+  // Full disconnect — wipe the stored access credential, config, encrypted cache (and its
+  // key), and skipped IDs. Returns the addon to the SetupAuth screen.
+  async function handleDisconnect() {
+    setDisconnectOpen(false);
+    await deleteCredentials(ctx.api.secrets);
+    await deleteConfig(ctx.api.secrets);
+    await clearResponseCache(ctx.api.secrets);
+    clearSkippedIds();
+    setSkippedIds(new Set());
+    refresh(true);
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   const isWide = step === "reviewing";
@@ -825,7 +867,7 @@ export function SyncPage() {
                 {
                   accessUrl: accessUrl?.replace(/\/\/[^@]+@/, "//***@") ?? null,
                   config,
-                  cache: getCachedResponse(),
+                  cache: debugCache,
                   apiLog: getApiLog(),
                 },
                 null,
@@ -835,6 +877,30 @@ export function SyncPage() {
           </div>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setDebugOpen(false)}>Close</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Disconnect confirmation */}
+      <AlertDialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect SimpleFin?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                This removes the stored SimpleFin access credential from Wealthfolio's keyring and
+                deletes this addon's cached bank data, account mappings, and skipped-transaction
+                list from your device.
+              </span>
+              <span className="block">
+                Your imported Wealthfolio transactions are not affected. You'll need a new setup
+                token to reconnect.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDisconnect}>Disconnect</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1370,6 +1436,28 @@ export function SyncPage() {
                   <Button className="w-full" onClick={handleSaveSettings}>
                     Save Settings
                   </Button>
+
+                  <Separator />
+
+                  {/* Disconnect */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Disconnect
+                    </p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Remove the stored SimpleFin credential and wipe this addon's cached bank data,
+                      mappings, and skipped list from your device. Imported transactions are kept.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-destructive text-destructive hover:text-destructive"
+                      onClick={() => setDisconnectOpen(true)}
+                    >
+                      <Icons.XCircle className="h-4 w-4 mr-2" />
+                      Disconnect SimpleFin
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </CollapsibleContent>
