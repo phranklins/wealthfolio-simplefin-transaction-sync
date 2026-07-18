@@ -1,6 +1,6 @@
 {
   "name": "wealthfolio-bank-sync",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "A Wealthfolio addon for syncing your bank transactions through SimpleFin Bridge.",
   "author": "Franklin Shen (a fork from Mark Rickert's original code)",
   "type": "module",

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type SyntheticEvent } from "react";
 import {
   Card,
   CardContent,
@@ -44,17 +44,24 @@ export function SetupAuth() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: SyntheticEvent) {
     e.preventDefault();
+    // eslint-disable-next-line no-console
+    console.log("[bank-sync] Connect submit fired. token length:", token.trim().length,
+      "network api?", typeof ctx?.api?.network?.request);
     setError(null);
     setIsLoading(true);
     try {
+      console.log("[bank-sync] claiming access url…");
       const accessUrl = await claimAccessUrl(ctx.api.network, token);
+      console.log("[bank-sync] claim OK, saving credentials…");
       await saveCredentials(ctx.api.secrets, accessUrl);
       await deleteConfig(ctx.api.secrets);
       clearResponseCache();
+      console.log("[bank-sync] saved, refreshing…");
       refresh(true);
     } catch (err) {
+      console.error("[bank-sync] Connect failed:", err);
       setError(getErrorMessage(err, "Failed to connect. Check your token and try again."));
     } finally {
       setIsLoading(false);
@@ -124,7 +131,12 @@ export function SetupAuth() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button type="submit" disabled={!token.trim() || isLoading} className="w-full">
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!token.trim() || isLoading}
+              className="w-full"
+            >
               {isLoading ? "Connecting..." : "Connect SimpleFin"}
             </Button>
           </form>
