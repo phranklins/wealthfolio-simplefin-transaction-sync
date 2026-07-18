@@ -39,7 +39,10 @@ export function stringSimilarity(a: string, b: string): number {
 }
 
 function effectiveAmount(activity: ActivityDetails): number {
-  return activity.quantity * activity.unitPrice;
+  // 3.x reports these as decimal strings (nullable); parse defensively.
+  const quantity = parseFloat(activity.quantity ?? "0") || 0;
+  const unitPrice = parseFloat(activity.unitPrice ?? "0") || 0;
+  return quantity * unitPrice;
 }
 
 function scoreMatch(

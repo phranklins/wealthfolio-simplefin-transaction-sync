@@ -1,6 +1,5 @@
 import React from "react";
 import type { AddonContext } from "@wealthfolio/addon-sdk";
-import { Icons } from "@wealthfolio/ui";
 import { BankSyncAddonProvider, useBankSyncAddon } from "./contexts/BankSyncAddonProvider";
 import { SetupAuth, SetupMapping, SyncPage } from "./pages";
 
@@ -24,7 +23,7 @@ export default function enable(ctx: AddonContext) {
   const sidebarItem = ctx.sidebar.addItem({
     id: "bank-sync",
     label: "Bank Sync",
-    icon: <Icons.Refresh className="h-5 w-5" />,
+    icon: "bank",
     route: "/addon/bank-sync",
     order: 100,
   });

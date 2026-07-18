@@ -1,6 +1,6 @@
 {
   "name": "wealthfolio-bank-sync",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A Wealthfolio addon for syncing your bank transactions through SimpleFin Bridge.",
   "type": "module",
   "main": "dist/addon.js",
@@ -20,8 +20,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@wealthfolio/addon-sdk": "^2.0.0",
-    "@wealthfolio/ui": "^2.0.0",
+    "@wealthfolio/addon-sdk": "^3.6.2",
+    "@wealthfolio/ui": "^3.6.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
@@ -36,7 +36,7 @@
     "@types/react": "^19.1.1",
     "@types/react-dom": "^19.1.1",
     "@vitejs/plugin-react": "^5.0.2",
-    "@wealthfolio/addon-dev-tools": "^2.0.0",
+    "@wealthfolio/addon-dev-tools": "^3.6.2",
     "rollup-plugin-external-globals": "^0.13.0",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",

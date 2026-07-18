@@ -538,20 +538,10 @@ export function SyncPage() {
         };
       });
 
-      // checkImport requires a single accountId — validate each account's batch separately
-      const byAccount = new Map<string, ActivityImport[]>();
-      for (const a of activities) {
-        if (!byAccount.has(a.accountId)) byAccount.set(a.accountId, []);
-        byAccount.get(a.accountId)!.push(a);
-      }
-
       try {
-        const allValid: ActivityImport[] = [];
-        for (const [accountId, acctActivities] of byAccount) {
-          const checked = await ctx.api.activities.checkImport(accountId, acctActivities);
-          allValid.push(...checked.filter((a) => a.isValid));
-          errors += checked.filter((a) => !a.isValid).length;
-        }
+        const checked = await ctx.api.activities.checkImport(activities);
+        const allValid = checked.filter((a) => a.isValid);
+        errors += checked.filter((a) => !a.isValid).length;
         if (allValid.length > 0) await ctx.api.activities.import(allValid);
         imported = allValid.length;
       } catch {
@@ -1870,7 +1860,7 @@ export function SyncPage() {
             </Card>
             <Card className="border-primary">
               <CardContent className="p-4 flex items-center gap-3">
-                <Icons.FileUp className="h-5 w-5 text-primary shrink-0" />
+                <Icons.Import className="h-5 w-5 text-primary shrink-0" />
                 <div>
                   <p className="text-xs text-muted-foreground">To Import</p>
                   <p className="text-2xl font-bold text-primary">{readyItems.length}</p>
@@ -1918,7 +1908,7 @@ export function SyncPage() {
                 </>
               ) : (
                 <>
-                  <Icons.FileUp className="h-4 w-4 mr-2" />
+                  <Icons.Import className="h-4 w-4 mr-2" />
                   Import {readyItems.length} {readyItems.length === 1 ? "Activity" : "Activities"}
                 </>
               )}
