@@ -1,8 +1,18 @@
-import type { ActivityType } from "@wealthfolio/addon-sdk";
+import type { ActivityType, AccountType } from "@wealthfolio/addon-sdk";
 
 // Matching thresholds
 export const HIGH_CONFIDENCE = 80;
 export const LOW_CONFIDENCE = 40;
+
+// Account-type groupings. Crypto mirrors securities: holdings-based, priced by
+// symbol, using investment activity types (BUY/SELL/…) rather than cash flows.
+export function isInvestmentType(t: AccountType | string | undefined): boolean {
+  return t === "SECURITIES" || t === "CRYPTOCURRENCY";
+}
+
+export function isCashLikeType(t: AccountType | string | undefined): boolean {
+  return t === "CASH" || t === "CREDIT_CARD";
+}
 
 // SimpleFin
 export const SIMPLEFIN_CREATE_URL = "https://bridge.simplefin.org/simplefin/create";

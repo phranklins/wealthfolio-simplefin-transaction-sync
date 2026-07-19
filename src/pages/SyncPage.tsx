@@ -30,6 +30,7 @@ import {
 } from "@wealthfolio/ui";
 import type {
   Account,
+  AccountType,
   ActivityDetails,
   ActivityType,
   ActivityImport,
@@ -58,6 +59,8 @@ import {
   guessSymbol,
   CASH_TYPES,
   INVESTMENT_TYPES,
+  isInvestmentType,
+  isCashLikeType,
   PAGE_SIZE,
 } from "../lib";
 import type { ApiLogEntry, ApiStats } from "../lib";
@@ -170,7 +173,7 @@ export function SyncPage() {
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
-  const [accountTypeMap, setAccountTypeMap] = useState<Map<string, boolean>>(new Map());
+  const [accountTypeMap, setAccountTypeMap] = useState<Map<string, AccountType>>(new Map());
 
   // Which SimpleFin account is currently being synced (null = idle)
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -318,7 +321,7 @@ export function SyncPage() {
   }, [config, cachedAccountMap, idleActivities, skippedIds]);
 
   const showInvestmentCols = useMemo(
-    () => Array.from(accountTypeMap.values()).some(Boolean),
+    () => Array.from(accountTypeMap.values()).some((t) => isInvestmentType(t)),
     [accountTypeMap],
   );
 
@@ -413,8 +416,8 @@ export function SyncPage() {
       setWfAccountMap(freshWfMap);
 
       const wfAccount = freshWfMap.get(mappingToSync.wealthfolioAccountId);
-      const isSecurities = wfAccount?.accountType === "SECURITIES";
-      setAccountTypeMap(new Map([[accountId, isSecurities]]));
+      const accountType = (wfAccount?.accountType ?? "CASH") as AccountType;
+      setAccountTypeMap(new Map([[accountId, accountType]]));
 
       const sfResponse = await fetchOrUseCache(force);
 
@@ -443,9 +446,9 @@ export function SyncPage() {
       const enrichMatch = (m: TransactionMatch) => ({
         ...m,
         resolvedActivityType:
-          m.resolvedActivityType ?? guessActivityType(m.simpleFinTransaction, isSecurities),
+          m.resolvedActivityType ?? guessActivityType(m.simpleFinTransaction, accountType),
         resolvedSymbol:
-          m.resolvedSymbol ?? guessSymbol(m.simpleFinTransaction, isSecurities, m.currency),
+          m.resolvedSymbol ?? guessSymbol(m.simpleFinTransaction, accountType, m.currency),
       });
       setPermanentlySkippedMatches(
         allMatches
@@ -461,7 +464,7 @@ export function SyncPage() {
       // Nothing actionable to review — skip straight to done and check balance
       if (pending.length === 0) {
         setImportResults({ imported: 0, errors: 0 });
-        if (!isSecurities) {
+        if (isCashLikeType(accountType)) {
           const sfBalance = parseFloat(sfAccount.balance);
           const sfBalanceDate = sfAccount["balance-date"] ?? Math.floor(Date.now() / 1000);
           if (!isNaN(sfBalance)) {
@@ -502,7 +505,9 @@ export function SyncPage() {
 
     // Get WF balance BEFORE import — portfolio may not reflect newly imported
     // transactions immediately, so we compute expected post-import balance manually
-    const isCashAccount = !!(selectedAccountId && !accountTypeMap.get(selectedAccountId));
+    const isCashAccount = !!(
+      selectedAccountId && isCashLikeType(accountTypeMap.get(selectedAccountId))
+    );
     let preImportWfCash = NaN;
     if (isCashAccount && selectedMapping) {
       preImportWfCash = await getWfCashBalance(selectedMapping.wealthfolioAccountId);
@@ -948,14 +953,14 @@ export function SyncPage() {
               const cachedSf = cachedAccountMap.get(mapping.simpleFinAccountId);
               const wfAccount = wfAccountMap.get(mapping.wealthfolioAccountId);
               const wfMissing = wfAccountsLoaded && !wfAccount;
-              const isSecuritiesCard = wfAccount?.accountType === "SECURITIES";
+              const isInvestmentCard = isInvestmentType(wfAccount?.accountType);
 
               const sfBalance = cachedSf ? parseFloat(cachedSf.balance) : NaN;
               const wfBalance = wfCashBalances.get(mapping.wealthfolioAccountId) ?? NaN;
               const balanceDiff =
                 !isNaN(sfBalance) && !isNaN(wfBalance) ? sfBalance - wfBalance : NaN;
               const hasMismatch =
-                !isSecuritiesCard && !isNaN(balanceDiff) && Math.abs(balanceDiff) > 0.005;
+                !isInvestmentCard && !isNaN(balanceDiff) && Math.abs(balanceDiff) > 0.005;
 
               const fmtSfIsNeg = cachedSf ? parseFloat(cachedSf.balance) < 0 : false;
               const fmtWfIsNeg = !isNaN(wfBalance) ? wfBalance < 0 : false;
@@ -1553,11 +1558,11 @@ export function SyncPage() {
                       const amount = parseFloat(sfTx.amount);
                       const absAmt = Math.abs(amount);
                       const isNeg = amount < 0;
-                      const isSecurities = accountTypeMap.get(m.simpleFinAccountId) ?? false;
+                      const acctType = (accountTypeMap.get(m.simpleFinAccountId) ?? "CASH") as AccountType;
                       const symbol = m.resolvedSymbol ?? `$CASH-${m.currency}`;
-                      const typeOpts = isSecurities ? INVESTMENT_TYPES : CASH_TYPES;
+                      const typeOpts = isInvestmentType(acctType) ? INVESTMENT_TYPES : CASH_TYPES;
                       const currentType =
-                        m.resolvedActivityType ?? guessActivityType(sfTx, isSecurities);
+                        m.resolvedActivityType ?? guessActivityType(sfTx, acctType);
 
                       const key = txKey(m);
                       const isExpanded = expandedRows.has(key);
