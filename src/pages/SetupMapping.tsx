@@ -20,7 +20,7 @@ import {
   Icons,
   PrivacyAmount,
 } from "@wealthfolio/ui";
-import type { Account } from "@wealthfolio/addon-sdk";
+import type { Account, AccountType } from "@wealthfolio/addon-sdk";
 import {
   fetchAccounts,
   getCachedResponse,
@@ -35,7 +35,7 @@ import { SfErrorsAlert, PageHeader } from "../components";
 import type { SimpleFinAccount, AccountMapping } from "../types";
 import { DEFAULT_CONFIG } from "../types";
 
-type NewAccountForm = { name: string; accountType: "CASH" | "SECURITIES"; currency: string };
+type NewAccountForm = { name: string; accountType: AccountType; currency: string };
 
 export function SetupMapping() {
   const { ctx, accessUrl, config, refresh } = useBankSyncAddon();
@@ -363,7 +363,7 @@ export function SetupMapping() {
                         onValueChange={(val) =>
                           setNewAccountForms((prev) => ({
                             ...prev,
-                            [sf.id]: { ...form, accountType: val as "CASH" | "SECURITIES" },
+                            [sf.id]: { ...form, accountType: val as AccountType },
                           }))
                         }
                       >
@@ -371,8 +371,10 @@ export function SetupMapping() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="CASH">Spending account</SelectItem>
-                          <SelectItem value="SECURITIES">Investment account</SelectItem>
+                          <SelectItem value="CASH">Cash (checking, savings)</SelectItem>
+                          <SelectItem value="CREDIT_CARD">Credit card</SelectItem>
+                          <SelectItem value="SECURITIES">Securities (investment)</SelectItem>
+                          <SelectItem value="CRYPTOCURRENCY">Crypto</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
