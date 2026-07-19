@@ -1,7 +1,7 @@
 {
   "id": "wealthfolio-bank-sync",
   "name": "Wealthfolio Simplefin Bank Sync",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Sync transaction data from SimpleFin Bridge to Wealthfolio",
   "author": "Franklin Shen (a fork from Mark Rickert's original code)",
   "main": "dist/addon.js",
@@ -30,8 +30,8 @@
     },
     {
       "category": "secrets",
-      "functions": ["set", "get", "delete"],
-      "purpose": "Securely store the SimpleFin access URL in Wealthfolio's encrypted keyring"
+      "functions": ["set", "get", "use", "delete"],
+      "purpose": "Securely store the SimpleFin access URL, and let the network broker use the stored credential for Basic auth without exposing it to addon code"
     },
     {
       "category": "network",
